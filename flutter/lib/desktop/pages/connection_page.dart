@@ -16,6 +16,7 @@ import 'package:flutter_hbb/models/peer_model.dart';
 
 import '../../common.dart';
 import '../widgets/companion_connection_surface.dart';
+import '../widgets/companion_device_widgets.dart';
 import '../../common/formatter/id_formatter.dart';
 import '../../common/widgets/peer_tab_page.dart';
 import '../../common/widgets/autocomplete.dart';
@@ -126,10 +127,10 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
                         : Color.fromARGB(255, 224, 79, 95)),
               ),
             ).marginSymmetric(horizontal: em),
-            Container(
-              width: isIncomingOnly ? 226 : null,
-              child: _buildConnStatusMsg(),
-            ),
+            if (isIncomingOnly)
+              Container(width: 226, child: _buildConnStatusMsg())
+            else
+              Flexible(child: _buildConnStatusMsg()),
             // stop
             if (!isIncomingOnly) startServiceWidget(),
             // ready && public
@@ -156,16 +157,22 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
 
   _buildConnStatusMsg() {
     widget.onSvcStatusChanged?.call();
-    return Text(
-      _svcStopped.value
-          ? translate("Service is not running")
-          : stateGlobal.svcStatus.value == SvcStatus.connecting
-              ? translate("connecting_status")
-              : stateGlobal.svcStatus.value == SvcStatus.notReady
-                  ? translate("not_ready_status")
-                  : translate('Ready'),
-      style: TextStyle(fontSize: em),
-    );
+    final message = _svcStopped.value
+        ? translate("Service is not running")
+        : stateGlobal.svcStatus.value == SvcStatus.connecting
+            ? translate("connecting_status")
+            : stateGlobal.svcStatus.value == SvcStatus.notReady
+                ? translate("not_ready_status")
+                : translate('Ready');
+    if (!bind.isIncomingOnly()) {
+      return CompanionServiceStatusLabel(
+        label: translate('ID Server'),
+        message: message,
+        explanation: translate(
+            'ID server status does not describe direct IP connections'),
+      );
+    }
+    return Text(message, style: TextStyle(fontSize: em));
   }
 
   updateStatus() async {

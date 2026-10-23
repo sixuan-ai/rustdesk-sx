@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../common.dart';
 import '../../desktop/widgets/companion_peer_widgets.dart';
+import '../../desktop/widgets/companion_device_widgets.dart';
 import '../../models/peer_model.dart';
 import '../../models/platform_model.dart';
 import 'peer_card.dart';
@@ -189,13 +190,15 @@ class _PeersViewState extends State<_PeersView>
         if (peers.peers.isEmpty) {
           gFFI.peerTabModel.setCurrentTabCachedPeers([]);
           if (isDesktop) {
-            return CompanionPeerEmptyState(
-              icon: PeerTabModel.icons[widget.peerTabIndex.index],
-              title:
-                  translate(PeerTabModel.tabNames[widget.peerTabIndex.index]),
-              message:
-                  translate(_emptyMessages[widget.peers.loadEvent] ?? 'Empty'),
-            );
+            return Obx(() => peerSearchText.value.trim().isNotEmpty
+                ? _noSearchResults(peerSearchText.value)
+                : CompanionPeerEmptyState(
+                    icon: PeerTabModel.icons[widget.peerTabIndex.index],
+                    title: translate(
+                        PeerTabModel.tabNames[widget.peerTabIndex.index]),
+                    message: translate(
+                        _emptyMessages[widget.peers.loadEvent] ?? 'Empty'),
+                  ));
           }
           return Center(
             child: Column(
@@ -237,6 +240,16 @@ class _PeersViewState extends State<_PeersView>
 
   String _cardId(String id) => widget.peers.name + id;
   String _peerId(String cardId) => cardId.replaceAll(widget.peers.name, '');
+
+  Widget _noSearchResults(String query) => CompanionNoSearchResults(
+        query: query,
+        title: translate('No matching devices'),
+        clearLabel: translate('Clear search'),
+        onClear: () {
+          peerSearchTextController.clear();
+          peerSearchText.value = '';
+        },
+      );
 
   Widget _buildPeersView(Peers peers) {
     final updateEvent = peers.event;
@@ -305,6 +318,11 @@ class _PeersViewState extends State<_PeersView>
               _curPeers.clear();
               _curPeers.addAll(peers.map((e) => e.id));
               _queryOnlines(true);
+            }
+            if (isDesktop &&
+                peers.isEmpty &&
+                filters[0].value.trim().isNotEmpty) {
+              return _noSearchResults(filters[0].value);
             }
             return child;
           } else {

@@ -117,3 +117,52 @@ PATH="$HOME/.local/share/rustdesk-dev/build-tools:$PATH" RUSTDESK_BUILD_JOBS=2 C
 本轮未改造非空设备卡片、设置页或远控工具条；完整首页在小窗口、浅色以及 Windows/macOS 上的人工交互仍待后续核对。移动端/Web 未执行构建验证。
 
 仅修改源码和本机 Debug 构建产物；未修改服务、账号或持久配置。回滚时撤销本节对应的 UI 提交并重新执行上述 Debug 构建，再重新启动本机开发客户端。改动保留在当前开发分支，本轮未推送远端。
+
+## 设备卡片、搜索与状态提示（2026-10-23，第三轮）
+
+本轮重新逐张查看 `AAA/20261023-130457.jpg`、`130515`、`130522`、`130529`、`130534` 五张本地参考。此前实现采用了粉紫/薄荷配色、MiSans 和原创角色绘图，并非对参考手机页面的完整复刻；本轮进一步将浅色柔和表面、深紫层次和薄荷反馈应用到实际设备组件。
+
+### 设计与实现
+
+保留现有六个色彩基准：ink `#29223D`、violet `#7650BC`、pink `#F3A5E4`、lilac `#E7DBFA`、mint `#BAEEE8`、midnight `#171329`。MiSans 设备名称 14、ID/主机信息 12、在线提示/备注 11；内容左对齐，名称与 ID 优先。参考中的角色仍只用于首页主视觉，设备区不增加角色或装饰动画。
+
+```text
+[平台] [在线查询结果]       [更多/选择]
+设备名称
+设备 ID
+用户/主机（遵从隐藏用户名选项）
+备注（原显示条件）
+
+[搜索设备               清空] [关闭]
+     无匹配结果 / 当前关键词 / 清除搜索
+ID 服务器  原有服务状态（悬停说明 IP 直连范围）
+```
+
+- 桌面网格卡片取消随机大色块，使用柔和粉紫/薄荷表面；浅色密码标记采用主题主色，避免白色图标失去对比。菜单、双击连接、选择、标签与共享密码标记仍由既有代码处理。紧凑列表/磁贴只调整平台底色和圆角。
+- 在线文字直接使用现有 `peer.online`，没有增加网络探测或缓存。`false` 显示“未确认在线”，不据此断言 Tailscale/IP 不可达。
+- 桌面搜索入口增加文字；搜索框继续使用原控制器和过滤值。清空关键词保留输入框，关闭搜索仍清空并收起。原有匹配、排序、过滤、在线查询与设备缓存逻辑保留。
+- 空数据分类和过滤后无匹配两条路径均显示关键词与恢复按钮；普通分类空状态继续使用上一轮组件。
+- 底部明确标出 ID 服务器，悬停说明此状态不代表 IP 直连结果；服务启停、服务状态更新以及仅被控模式保留。
+- 新增 6 个文案键：在 `src/lang/cn.rs` 提供简体中文，在模板和其他 52 个语言表追加空项（意大利语也仅追加空项）；英文直接使用键回退，不修改既有翻译。
+
+### 验证与边界
+
+```bash
+# 仓库根目录，Rust/原生构建并发 2
+RUSTDESK_DEV_HWCODEC=1 RUSTDESK_BUILD_JOBS=2 res/dev/build_linux.sh
+# flutter/ 下执行
+flutter test test/companion_device_ui_test.dart test/companion_ui_test.dart --concurrency=2
+flutter test --concurrency=2
+flutter analyze --no-pub lib/desktop/widgets/companion_device_widgets.dart lib/common/widgets/peer_card.dart lib/common/widgets/peer_tab_page.dart lib/common/widgets/peers_view.dart lib/desktop/pages/connection_page.dart test/companion_device_ui_test.dart
+```
+
+- 定向 9 项和全套 144 项测试通过。新增 3 项覆盖 220×140 卡片的长名称/1.5 倍文字/菜单操作、搜索清空与无结果恢复按钮、窄状态标签及说明。
+- Rust cdylib（含硬件编解码）和 Linux Debug bundle 构建通过；分析无 error/warning，14 个原有 API 废弃 info。原有 Rust warning 与 `file_picker` 元数据提示保留。
+- 使用实际新组件和真实 MiSans/MaterialIcons 字体渲染浅/深色预览，人工检查卡片正文、菜单区尺寸、文字对比和搜索空状态。预览使用明确标注的示例数据，不是在线设备实测，不包含真实 ID 或认证信息。预览 PNG 保存在本机 Codex 可视化目录，不加入仓库。
+- 本轮没有重启正在运行的客户端/OMEN 会话。新中文键由 Rust 核心提供，需下次启动新 bundle 才加载；不能以这次组件预览替代真实列表加载、完整页面窄窗口和远控交互验证。Windows/macOS/mobile/Web 未构建。
+
+### 回归面与回滚
+
+最终差异已逐项最小化：`peer_card.dart` 只增加桌面网格表现分支，以及桌面磁贴样式和密码标记颜色；原网格实现保留。`peer_tab_page.dart` 只接入桌面搜索表现；非桌面继续旧路径。`peers_view.dart` 只增加桌面无匹配分支和清空动作，仍执行原在线查询/缓存更新。`connection_page.dart` 只调整普通首页状态文案与可收缩布局，仅被控路径保留。新增 `companion_device_widgets.dart` 是无 FFI、无网络的表现组件，未改变共享类型或公共接口。语言表除末项补逗号外仅追加键；没有格式化全仓库。
+
+撤销本轮 UI 提交并运行相同构建命令可回滚。改动留在 `codex/stable-1.5.0-dev`，本轮未推送远端，未改服务、认证或网络配置。

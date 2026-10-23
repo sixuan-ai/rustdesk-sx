@@ -9,6 +9,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../../common.dart';
+import '../../common/companion_theme.dart';
+import '../../desktop/widgets/companion_device_widgets.dart';
 import '../../common/formatter/id_formatter.dart';
 import '../../models/peer_model.dart';
 import '../../models/platform_model.dart';
@@ -48,7 +50,7 @@ class _PeerCardState extends State<_PeerCard>
     with AutomaticKeepAliveClientMixin {
   var _menuPos = RelativeRect.fill;
   final double _cardRadius = 16;
-  final double _tileRadius = 5;
+  final double _tileRadius = isDesktop ? 14 : 5;
   final double _borderWidth = 2;
 
   @override
@@ -145,7 +147,9 @@ class _PeerCardState extends State<_PeerCard>
       children: [
         Container(
             decoration: BoxDecoration(
-              color: str2color('${peer.id}${peer.platform}', 0x7f),
+              color: isDesktop
+                  ? CompanionTheme.violet
+                  : str2color('${peer.id}${peer.platform}', 0x7f),
               borderRadius: isPortrait
                   ? BorderRadius.circular(_tileRadius)
                   : BorderRadius.only(
@@ -285,7 +289,24 @@ class _PeerCardState extends State<_PeerCard>
     final name = hideUsernameOnCard == true
         ? peer.hostname
         : '${peer.username}${peer.username.isNotEmpty && peer.hostname.isNotEmpty ? '@' : ''}${peer.hostname}';
-    final child = Card(
+    final child = isDesktop
+        ? Obx(() => CompanionDeviceCard(
+              title: peer.alias.isNotEmpty
+                  ? peer.alias
+                  : (peer.hostname.isNotEmpty
+                      ? peer.hostname
+                      : formatID(peer.id)),
+              id: formatID(peer.id),
+              host: name,
+              note: _showNote(peer) ? peer.note : '',
+              online: peer.online,
+              statusLabel:
+                  translate(peer.online ? 'Online' : 'Not confirmed online'),
+              platform: getPlatformImage(peer.platform, size: 22),
+              action: checkBoxOrActionMoreLandscape(peer, isTile: false),
+              foregroundDecoration: deco.value,
+            ))
+        : Card(
       color: Colors.transparent,
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -397,7 +418,8 @@ class _PeerCardState extends State<_PeerCard>
           Positioned(
             top: 4,
             left: 12,
-            child: Icon(Icons.key, size: 12, color: Colors.white),
+            child: Icon(Icons.key, size: 12,
+                color: isDesktop ? Theme.of(context).colorScheme.primary : Colors.white),
           ),
         if (colors.isNotEmpty)
           Positioned(

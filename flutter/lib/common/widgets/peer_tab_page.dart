@@ -24,6 +24,7 @@ import 'package:pull_down_button/pull_down_button.dart';
 
 import '../../common.dart';
 import '../../desktop/widgets/companion_peer_widgets.dart';
+import '../../desktop/widgets/companion_device_widgets.dart';
 import '../../models/platform_model.dart';
 
 class PeerTabPage extends StatefulWidget {
@@ -702,13 +703,35 @@ class _PeerSearchBarState extends State<PeerSearchBar> {
                 drawer = true;
               });
             },
-            child: Icon(
-              Icons.search_rounded,
-              color: Theme.of(context).hintColor,
-            ));
+            child: isDesktop
+                ? Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.search_rounded,
+                        size: 18, color: Theme.of(context).hintColor),
+                    const SizedBox(width: 5),
+                    Text(translate('Search'),
+                        style: const TextStyle(fontSize: 13)),
+                  ])
+                : Icon(
+                    Icons.search_rounded,
+                    color: Theme.of(context).hintColor,
+                  ));
   }
 
   Widget _buildSearchBar() {
+    if (isDesktop) {
+      return CompanionDeviceSearch(
+        controller: peerSearchTextController,
+        onChanged: (text) => peerSearchText.value = text,
+        hint: translate('Search devices'),
+        clearLabel: translate('Clear search'),
+        closeLabel: translate('Close'),
+        onClose: () => setState(() {
+          peerSearchTextController.clear();
+          peerSearchText.value = '';
+          drawer = false;
+        }),
+      );
+    }
     RxBool focused = false.obs;
     FocusNode focusNode = FocusNode();
     focusNode.addListener(() {
