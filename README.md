@@ -13,6 +13,8 @@
 
 **验证状态（2026-10-23）：** Linux Debug／Release 的 4K H.265 硬件链路已实测；持续 4K60 仍在优化，尚未达标。不要把硬件编解码连通等同于稳定 60 FPS。
 
+[**思玄版下载（GitHub Releases）**](https://github.com/sixuan-ai/rustdesk-sx/releases)：当前提供 Linux x86_64 / Ubuntu 26.04 预览包（便携版和 `.deb`）；Ubuntu 24.04 与其他平台尚未提供验证包。
+
 [二次开发说明](FORK.md) · [代码许可证](LICENCE) · [Linux 构建记录](docs/development-linux-latest-stable-2026-10-23.md) · [最新性能验证](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)
 
 MiSans 字体保留小米及原字体作者的版权，适用其[独立许可](flutter/assets/fonts/misans/README.md)；其他第三方组件按各自许可提供。
@@ -50,9 +52,9 @@ RustDesk welcomes contribution from everyone. See [CONTRIBUTING.md](docs/CONTRIB
 
 [**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
 
-[**BINARY DOWNLOAD**](https://github.com/rustdesk/rustdesk/releases)
+[**思玄版软件下载 / DOWNLOAD**](https://github.com/sixuan-ai/rustdesk-sx/releases)
 
-[**NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
+[**UPSTREAM NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
 
 [<img src="https://f-droid.org/badge/get-it-on.png"
     alt="Get it on F-Droid"

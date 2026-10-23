@@ -5,7 +5,7 @@
 - GitHub 账号：[Max Stark（@sixuan-ai）](https://github.com/sixuan-ai)。
 - 上游项目：[rustdesk/rustdesk](https://github.com/rustdesk/rustdesk)。
 - 上游稳定基线：`1.5.0`，提交 `fada664df7a294d1d1a9ca3e7cd3637069122f17`。
-- 当前开发分支：`codex/stable-1.5.0-dev`。
+- 发布主分支：`main`；持续开发分支：`codex/stable-1.5.0-dev`。
 - 说明日期：2026-10-23。
 
 ## 来源与许可
@@ -58,4 +58,4 @@ Linux Debug 和完整 Release 已构建、运行，并通过 Tailscale IP 直连
 
 Wayland 的桌面共享选择属于被控端系统授权流程；出现提示时应在被控端选择共享屏幕。等待共享授权与网络连接失败或客户端卡死须分别判断。
 
-当前公开的是开发源码；本分支的 Windows、macOS、移动端打包，以及长期低显存／双屏同时 4K60 等场景没有在本轮验证。二进制发布应附带对应源码版本、许可和适用的第三方声明。
+源码和 Linux x86_64 / Ubuntu 26.04 开发预览包通过 [GitHub Releases](https://github.com/sixuan-ai/rustdesk-sx/releases) 提供；本分支的 Windows、macOS、移动端打包，以及长期低显存／双屏同时 4K60 等场景没有在本轮验证。二进制发布应附带对应源码版本、许可和适用的第三方声明。
