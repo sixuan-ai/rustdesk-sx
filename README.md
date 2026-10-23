@@ -1,209 +1,140 @@
-# RustDesk · 思玄二次开发版
+# RustDesk SX · 思玄二次开发版
 
-**仓库：[`rustdesk-sx`](https://github.com/sixuan-ai/rustdesk-sx) · 二次开发维护：转瞬之澜（思玄）**
+面向中文桌面体验、Linux Wayland 和高分辨率远控的 RustDesk 衍生版本。
 
-基于 [RustDesk](https://github.com/rustdesk/rustdesk) 1.5.0 的独立维护版本，保留上游来源、作者声明和 AGPL-3.0 许可证。
+基于 [RustDesk 1.5.0](https://github.com/rustdesk/rustdesk/tree/1.5.0)，由 **转瞬之澜（思玄） / [Max Stark（@sixuan-ai）](https://github.com/sixuan-ai)** 独立维护，保留上游 Git 历史、版权与 AGPL-3.0 许可证。
 
-本分支重点：
+[下载预览版](https://github.com/sixuan-ai/rustdesk-sx/releases) · [安装与使用](#安装与使用) · [源码构建](#源码构建) · [开发记录](#开发记录) · [反馈问题](https://github.com/sixuan-ai/rustdesk-sx/issues)
 
-- MiSans 字体、默认简体中文与桌面 UI 调整。
-- Linux 原生 Wayland 客户端、文本剪贴板及中文输入辅助。
-- Tailscale IP 直连验证、逐屏采集／编解码／队列监测。
-- Linux 多屏解码器资源管理，以及当前稳定 Rust／Flutter 工具链的 Debug／Release 构建。
+> 当前阶段：**Linux 开发预览**。已发布 Ubuntu 26.04 x86_64 包；持续 4K60 尚未达标，其他平台尚无本分支验证的发布包。
 
-**验证状态（2026-10-23）：** Linux Debug／Release 的 4K H.265 硬件链路已实测；持续 4K60 仍在优化，尚未达标。不要把硬件编解码连通等同于稳定 60 FPS。
+## 下载
 
-[**思玄版下载（GitHub Releases）**](https://github.com/sixuan-ai/rustdesk-sx/releases)：当前提供 Linux x86_64 / Ubuntu 26.04 预览包（便携版和 `.deb`）；Ubuntu 24.04 与其他平台尚未提供验证包。
+当前发布：[`v1.5.0-sx.20261023.1`](https://github.com/sixuan-ai/rustdesk-sx/releases/tag/v1.5.0-sx.20261023.1)，更新日期 **2026-10-23**。
 
-[二次开发说明](FORK.md) · [代码许可证](LICENCE) · [Linux 构建记录](docs/development-linux-latest-stable-2026-10-23.md) · [最新性能验证](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)
+| 文件 | 用途 |
+| --- | --- |
+| [Ubuntu 26.04 安装包（.deb）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261023.1/rustdesk-sx_1.5.0%2Bsx.20261023.1_amd64.deb) | 安装后通过桌面入口或 `rustdesk-sx` 启动 |
+| [Linux x86_64 便携包（.tar.gz）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261023.1/rustdesk-sx-1.5.0%2Bsx.20261023.1-linux-x86_64-ubuntu26.04.tar.gz) | 解压后通过 `run.sh` 启动 |
+| [SHA256SUMS](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261023.1/SHA256SUMS) / [BUILD-INFO.json](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261023.1/BUILD-INFO.json) | 文件校验、精确源码提交、编译特性与运行依赖 |
 
-MiSans 字体保留小米及原字体作者的版权，适用其[独立许可](flutter/assets/fonts/misans/README.md)；其他第三方组件按各自许可提供。
+**两个包均面向 Ubuntu 26.04 x86_64，依赖 glibc ≥ 2.43、FFmpeg 8 和对应系统库，不适用于 Ubuntu 24.04。** 便携包也依赖系统库。Windows、macOS、ARM 及其他 Linux 发行版未提供此次验证包。
 
----
+发布包对应源码标签；`main` 上的后续提交不会自动更新已发布的二进制。软件内部基础版本号仍为 `1.5.0`，思玄版发行号以发布页面、包名和构建信息为准。
 
-## 上游项目说明
+## 这一版做了什么
 
-以下保留 RustDesk 上游 README；其中官方服务、下载和社区链接指向上游项目。本二次开发版本的构建方式与验证范围以上述说明为准。
+| 方向 | 当前内容与范围 |
+| --- | --- |
+| 中文桌面 UI | 默认简体中文、MiSans 字体、粉紫／薄荷配色；完善连接首页、设备卡片、搜索反馈和状态提示 |
+| 原生 Wayland 客户端 | 已在 Ubuntu 26.04 / GNOME Wayland 开发环境运行和验证；不代表所有合成器、所有 Linux 发行版都已适配 |
+| 剪贴板与中文输入 | 文本剪贴板路径，以及本机输入法选词后发送到远端的中文输入辅助；各有独立验证记录 |
+| Tailscale / IP 直连 | 通过 Tailscale IP 实测远控；Tailscale 由用户单独安装和配置，本项目不内置组网服务 |
+| 高分辨率与多屏 | Linux 4K H.265 / NVENC / CUDA 链路、多屏切换和解码器资源管理有实测记录；持续 4K60 仍在优化 |
+| 性能分析 | 可选的逐屏采集、像素转换、编解码、提交与队列监测；实验性性能开关不默认启用 |
 
-<p align="center">
-  <img src="res/logo-header.svg" alt="RustDesk - Your remote desktop"><br>
-  <a href="#raw-steps-to-build">Build</a> •
-  <a href="#how-to-build-with-docker">Docker</a> •
-  <a href="#file-structure">Structure</a> •
-  <a href="#screenshots">Screenshots</a><br>
-  [<a href="docs/README-UA.md">Українська</a>] | [<a href="docs/README-CS.md">česky</a>] | [<a href="docs/README-ZH.md">中文</a>] | [<a href="docs/README-HU.md">Magyar</a>] | [<a href="docs/README-ES.md">Español</a>] | [<a href="docs/README-FA.md">فارسی</a>] | [<a href="docs/README-FR.md">Français</a>] | [<a href="docs/README-DE.md">Deutsch</a>] | [<a href="docs/README-PL.md">Polski</a>] | [<a href="docs/README-ID.md">Indonesian</a>] | [<a href="docs/README-FI.md">Suomi</a>] | [<a href="docs/README-ML.md">മലയാളം</a>] | [<a href="docs/README-JP.md">日本語</a>] | [<a href="docs/README-NL.md">Nederlands</a>] | [<a href="docs/README-IT.md">Italiano</a>] | [<a href="docs/README-RU.md">Русский</a>] | [<a href="docs/README-PTBR.md">Português (Brasil)</a>] | [<a href="docs/README-EO.md">Esperanto</a>] | [<a href="docs/README-KR.md">한국어</a>] | [<a href="docs/README-AR.md">العربي</a>] | [<a href="docs/README-VN.md">Tiếng Việt</a>] | [<a href="docs/README-DA.md">Dansk</a>] | [<a href="docs/README-GR.md">Ελληνικά</a>] | [<a href="docs/README-TR.md">Türkçe</a>] | [<a href="docs/README-NO.md">Norsk</a>] | [<a href="docs/README-RO.md">Română</a>]<br>
-  <b>We need your help to translate this README, <a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">RustDesk UI</a> and <a href="https://github.com/rustdesk/doc.rustdesk.com">RustDesk Doc</a> to your native language</b>
-</p>
+这些是当前分支的实现与已有验证范围，不是对所有硬件和平台的兼容承诺。文件传输等上游功能的继承，也不等于本分支已完成相应平台的专项回归。
 
-> [!Caution]
-> **Misuse Disclaimer:** <br>
-> The developers of RustDesk do not condone or support any unethical or illegal use of this software. Misuse, such as unauthorized access, control or invasion of privacy, is strictly against our guidelines. The authors are not responsible for any misuse of the application.
+### 界面预览
 
+![思玄版设备组件浅色与深色预览](res/screenshots/rustdesk-sx-components.png)
 
-Chat with us: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
+上图由实际 Flutter 组件与 MiSans 渲染，使用示例设备数据，展示设备卡片、搜索无匹配和 ID 服务器状态；**不是完整首页截图，也不是在线设备实测结果**。设计与验证过程见 [UI 开发记录](docs/development-ui-misans-2026-10-23.md)。
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-Advanced%20Features-blue)](https://rustdesk.com/pricing.html)
+## 安装与使用
 
-Yet another remote desktop solution, written in Rust. Works out of the box with no configuration required. You have full control of your data, with no concerns about security. You can use our rendezvous/relay server, [set up your own](https://rustdesk.com/server), or [write your own rendezvous/relay server](https://github.com/rustdesk/rustdesk-server-demo).
+### Ubuntu 26.04 安装包
 
-![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
+下载 `.deb` 后，在下载目录执行：
 
-RustDesk welcomes contribution from everyone. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for help getting started.
-
-[**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
-
-[**思玄版软件下载 / DOWNLOAD**](https://github.com/sixuan-ai/rustdesk-sx/releases)
-
-[**UPSTREAM NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
-
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
-[<img src="https://flathub.org/api/badge?svg&locale=en"
-    alt="Get it on Flathub"
-    height="80">](https://flathub.org/apps/com.rustdesk.RustDesk)
-
-## Dependencies
-
-Desktop versions use Flutter or Sciter (deprecated) for GUI. This tutorial is for Sciter only, since it is easier and more friendly to start. Check out our [CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml) for building the Flutter version.
-
-Please download Sciter dynamic library yourself.
-
-[Windows](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.win/x64/sciter.dll) |
-[Linux](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so) |
-[macOS](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.osx/libsciter.dylib)
-
-## Raw Steps to build
-
-- Prepare your Rust development env and C++ build env
-
-- Install [vcpkg](https://github.com/microsoft/vcpkg), and set `VCPKG_ROOT` env variable correctly
-
-  - Windows: vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
-  - Linux/macOS: vcpkg install libvpx libyuv opus aom
-
-- run `cargo run`
-
-## [Build](https://rustdesk.com/docs/en/dev/build/)
-
-## How to Build on Linux
-
-### Ubuntu 18 (Debian 10)
-
-```sh
-sudo apt install -y zip g++ gcc git curl wget nasm yasm libgtk-3-dev clang libxcb-randr0-dev libxdo-dev \
-        libxfixes-dev libxcb-shape0-dev libxcb-xfixes0-dev libasound2-dev libpulse-dev cmake make \
-        libclang-dev ninja-build libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+```bash
+sudo apt install ./rustdesk-sx_1.5.0+sx.20261023.1_amd64.deb
+rustdesk-sx
 ```
 
-### openSUSE Tumbleweed
+安装包使用独立的程序目录与桌面入口，不安装、替换或启停现有 RustDesk 系统服务。**应用仍使用 RustDesk 的用户配置位置**，已有账号和设备设置可能共用，不应把独立安装路径理解为配置隔离。
 
-```sh
-sudo zypper install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-devel libXfixes-devel cmake alsa-lib-devel gstreamer-devel gstreamer-plugins-base-devel xdotool-devel
+卸载应用：`sudo apt remove rustdesk-sx`；这不会自动清除用户配置。
+
+### 便携包
+
+下载 `.tar.gz` 后执行：
+
+```bash
+tar -xzf rustdesk-sx-1.5.0+sx.20261023.1-linux-x86_64-ubuntu26.04.tar.gz
+cd rustdesk-sx-1.5.0+sx.20261023.1-linux-x86_64-ubuntu26.04
+./run.sh
 ```
 
-### Fedora 28 (CentOS 8)
+仅启动客户端可使用 `./run.sh --no-server`。请保留同目录的 `lib/`、`data/` 和启动脚本；不要只复制一个可执行文件。
 
-```sh
-sudo yum -y install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-devel libxdo-devel libXfixes-devel pulseaudio-libs-devel cmake alsa-lib-devel gstreamer1-devel gstreamer1-plugins-base-devel
+### 通过 Tailscale 连接
+
+1. 两台设备先通过各自的 Tailscale 加入可互通的网络。
+2. 被控端运行 RustDesk，并允许“IP 直接访问”；访问策略、端口和认证按被控端配置。
+3. 在思玄版连接框输入目标设备的 Tailscale IP，完成 RustDesk 密码或授权流程。
+4. 若被控端使用 Wayland，按系统提示选择共享屏幕，再验证画面、操作和多屏切换。
+
+底部的 **ID 服务器状态**不代表 Tailscale/IP 直连是否可用；等待被控端选择共享屏幕，也不应直接判断为客户端卡死。Tailscale 组网不会替代 RustDesk 的认证或系统桌面共享授权。
+
+## 验证状态与已知限制
+
+截至 **2026-10-23**：
+
+- 源码 Flutter 测试 **144 项通过**，包含 UI、输入及其他现有模块的回归；这不是 144 项真实远控场景验收。
+- 当前发布包已完成优化 Release 构建、随包 ELF 动态依赖检查、解压后的版本入口与校验和检查，以及当前主机的 apt 模拟安装。
+- Linux Debug / Release 的 4K H.265 硬件链路有此前的实测记录；**本次打包未重新执行完整图形界面、远端键鼠或多屏回归**。
+- **持续 4K60 尚未达标**；提交回调帧率不等于合成器实际呈现帧率。双屏同时稳定 4K60、长期低显存及弱网画质仍需继续验证。
+- Wayland 被控端仍受系统共享授权与锁屏状态约束；本项目尚未完全去除 X11 相关依赖，也不宣称已实现所有环境的无人值守共享。
+- 公共包使用系统 GTK，未包含开发机针对 GTK 3.24.52 的私有 AT-SPI 修复；相关系统问题可能仍影响图形交互。
+
+具体平台、测试负载与证据分别见 [发布验证记录](docs/releases/2026-10-23-linux-preview.md)和[性能对照记录](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)。
+
+## 源码构建
+
+发布主分支为 `main`；持续开发分支为 `codex/stable-1.5.0-dev`。获取本项目源码与子模块：
+
+```bash
+git clone --branch main --recurse-submodules https://github.com/sixuan-ai/rustdesk-sx.git
+cd rustdesk-sx
 ```
 
-### Arch (Manjaro)
+本机已验证工具链为 Ubuntu 26.04.1、Flutter **3.47.7** / Dart **3.13.5**、Rust **1.99.1**。开发方向是当前稳定工具链；这里记录的是验证版本，不代表任意后续 SDK 都已验证。当前桌面 UI 使用 **Flutter**，不使用旧 Sciter 构建步骤。
 
-```sh
-sudo pacman -Syu --needed unzip git cmake gcc curl wget yasm nasm zip make pkg-config clang gtk3 xdotool libxcb libxfixes alsa-lib pipewire
+先按 [Linux 构建记录](docs/development-linux-latest-stable-2026-10-23.md)准备 Rust、Flutter Linux 桌面工具链、原生开发依赖及代码生成器。`flutter_rust_bridge_codegen 1.80.1` 用于匹配上游稳定基线的桥接 ABI；首次检出需生成被 Git 忽略的桥接文件。
+
+```bash
+# 首次构建：生成桥接并构建带硬件编解码的 Debug bundle
+RUSTDESK_DEV_HWCODEC=1 res/dev/build_linux.sh --generate-bridge
+res/dev/run_linux.sh
+
+# 后续构建优化 Release，需已有桥接产物
+RUSTDESK_DEV_HWCODEC=1 RUSTDESK_DEV_BUILD_MODE=release res/dev/build_linux.sh
+RUSTDESK_DEV_BUILD_MODE=release res/dev/run_linux.sh
 ```
 
-### Install vcpkg
+硬件编解码路径依赖系统 FFmpeg 开发库；省略 `RUSTDESK_DEV_HWCODEC=1` 可构建不启用该可选路径的版本。默认并发 2，上限 6。产物位于 `flutter/build/linux/x64/{debug,release}/bundle/`；开发启动器与可分发安装包用途不同，打包入口见 [发布记录](docs/releases/2026-10-23-linux-preview.md)。
 
-```sh
-git clone https://github.com/microsoft/vcpkg
-cd vcpkg
-git checkout 2023.04.15
-cd ..
-vcpkg/bootstrap-vcpkg.sh
-export VCPKG_ROOT=$HOME/vcpkg
-vcpkg/vcpkg install libvpx libyuv opus aom
-```
+## 开发记录
 
-### Fix libvpx (For Fedora)
+| 文档 | 内容 |
+| --- | --- |
+| [二次开发说明](FORK.md) | 上游基线、维护来源、许可与分支说明 |
+| [UI 与网络代码导览](docs/development-ui-network-2026-10-23.md) | 源码入口与模块关系 |
+| [中文 UI / MiSans](docs/development-ui-misans-2026-10-23.md) | 参考设计、组件迭代与测试范围 |
+| [原生 Wayland](docs/development-native-wayland-2026-10-23.md) | Linux 客户端启动和运行验证 |
+| [剪贴板与中文输入](docs/development-wayland-text-2026-10-23.md) | 文本路径、输入法与实际验收 |
+| [最新性能对照](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md) | Debug / Release、采集节拍与当前 4K60 限制 |
+| [Linux 预览包发布](docs/releases/2026-10-23-linux-preview.md) | 编译、依赖、打包、验证和回滚 |
 
-```sh
-cd vcpkg/buildtrees/libvpx/src
-cd *
-./configure
-sed -i 's/CFLAGS+=-I/CFLAGS+=-fPIC -I/g' Makefile
-sed -i 's/CXXFLAGS+=-I/CXXFLAGS+=-fPIC -I/g' Makefile
-make
-cp libvpx.a $HOME/vcpkg/installed/x64-linux/lib/
-cd
-```
+后续重点是继续完善桌面交互、减少 X11 依赖、定位高分辨率吞吐瓶颈，并逐步扩大平台与安装验证范围。反馈问题时，请说明系统/桌面会话、显卡、软件版本、连接方式和复现步骤；不要提交密码、令牌或完整用户配置。
 
-### Build
+## 来源与许可
 
-```sh
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-git clone --recurse-submodules https://github.com/rustdesk/rustdesk
-cd rustdesk
-mkdir -p target/debug
-wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
-mv libsciter-gtk.so target/debug
-VCPKG_ROOT=$HOME/vcpkg cargo run
-```
+这是独立维护的二次开发版本。上游项目为 [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk)，稳定基线为 `1.5.0`；上游官方服务、商店版本和社区不由本仓库维护。
 
-## How to build with Docker
+- 项目代码沿用 [GNU AGPL-3.0](LICENCE)，保留上游作者版权和来源说明。
+- MiSans 保留小米及字体作者的版权，适用其[独立字体许可与来源说明](flutter/assets/fonts/misans/README.md)。
+- Flutter、其他依赖及资源按各自许可提供，不因“思玄版”署名而转移版权。
 
-Begin by cloning the repository and building the Docker container:
-
-```sh
-git clone https://github.com/rustdesk/rustdesk
-cd rustdesk
-git submodule update --init --recursive
-docker build -t "rustdesk-builder" .
-```
-
-Then, each time you need to build the application, run the following command:
-
-```sh
-docker run --rm -it -v $PWD:/home/user/rustdesk -v rustdesk-git-cache:/home/user/.cargo/git -v rustdesk-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" rustdesk-builder
-```
-
-Note that the first build may take longer before dependencies are cached, subsequent builds will be faster. Additionally, if you need to specify different arguments to the build command, you may do so at the end of the command in the `<OPTIONAL-ARGS>` position. For instance, if you wanted to build an optimized release version, you would run the command above followed by `--release`. The resulting executable will be available in the target folder on your system, and can be run with:
-
-```sh
-target/debug/rustdesk
-```
-
-Or, if you're running a release executable:
-
-```sh
-target/release/rustdesk
-```
-
-Please ensure that you run these commands from the root of the RustDesk repository, or the application may not find the required resources. Also note that other cargo subcommands such as `install` or `run` are not currently supported via this method as they would install or run the program inside the container instead of the host.
-
-## File Structure
-
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: video codec, config, tcp/udp wrapper, and some other utility functions shared with the server
-- **[libs/base](https://github.com/rustdesk/rustdesk/tree/master/libs/base)**: protobuf, fs functions for file transfer, keyboard and platform code used only by this app
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: screen capture
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: platform specific keyboard/mouse control
-- **[libs/clipboard](https://github.com/rustdesk/rustdesk/tree/master/libs/clipboard)**: file copy and paste implementation for Windows, Linux, macOS.
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: obsolete Sciter UI (deprecated)
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: audio/clipboard/input/video services, and network connections
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: start a peer connection
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: Communicate with [rustdesk-server](https://github.com/rustdesk/rustdesk-server), wait for remote direct (TCP hole punching) or relayed connection
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: platform specific code
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: Flutter code for desktop and mobile
-
-## Screenshots
-
-![Connection Manager](https://github.com/rustdesk/rustdesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
-
-![Connected to a Windows PC](https://github.com/rustdesk/rustdesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
-
-![File Transfer](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
-
-![TCP Tunneling](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
-
+更完整的维护与来源说明见 [FORK.md](FORK.md)。其他语言的历史 README 保留上游参考内容，当前思玄版状态以本页和日期明确的开发记录为准。
