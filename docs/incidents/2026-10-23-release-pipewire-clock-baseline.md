@@ -36,13 +36,13 @@ literal 1. Unset retains the original clock behavior. Activation emits one
 message per recorder, rather than per frame.
 
 For temporary OMEN runs, stage the complete matching bundle in a separate
-`/opt/rustdesk-clock-debug` or `/opt/rustdesk-clock-release` directory and use
+`/opt/rustdesk-clock-debug-skia` or `/opt/rustdesk-clock-release-skia` directory and use
 only `/run/systemd/system/rustdesk.service.d/90-development-verification.conf`:
 
 ```ini
 [Service]
 ExecStart=
-ExecStart=/opt/rustdesk-clock-release/rustdesk --service
+ExecStart=/opt/rustdesk-clock-release-skia/rustdesk --service
 Environment=RUSTDESK_DISPLAY_METRICS=1 RUST_LOG=info
 ```
 
@@ -115,53 +115,174 @@ screen. The unselected screen can still produce source buffers. That behavior
 is confirmed by code/telemetry, but its contribution to the remaining gap
 requires a separate lifecycle experiment; it is not a proven unique cause.
 
-## Current validation and pending measurement
+## Release renderer correction
 
-Both hardware builds passed: Debug and the full optimized Rust/Flutter Release
-bundle. Release Rust compilation took about 9m56s on this loaded machine.
-Shell syntax, Python compilation, the time-filter regression test (1 passed)
-and git diff --check passed. Debug temporary service/client connected to the
-AOC with fresh 3840x2160 submissions and ffmpeg/hevc/AV_HWDEVICE_TYPE_CUDA;
-server telemetry confirmed hardware_encoder=true and target_fps=60. This was
-an idle desktop readiness check, not a dynamic 4K60 throughput result.
+The first Release launch used Impeller despite the launcher's Skia environment
+switch. Confirmed in the installed Flutter 3.47.7 source:
+`/home/x/flutter/engine/src/flutter/shell/platform/common/engine_switches.cc`
+excludes environment engine switches under FLUTTER_RELEASE. Flutter's
+[Linux Impeller setup](https://github.com/flutter/flutter/blob/master/engine/src/flutter/impeller/README.md)
+uses fl_dart_project_set_enable_impeller on the project instead.
 
-Core SHA-256 (matching local and staged OMEN artifacts):
+The development launcher now exports its validated RUSTDESK_DEV_RENDERER.
+A small Linux renderer_view.h adapter applies that explicit choice to each
+FlDartProject before fl_view_new. CMake force-includes it only in the runner
+and desktop_multi_window C++ targets so main and remote-window engines agree.
+The local macro redirects only their view construction; it does not patch the
+shared plugin cache or the Flutter SDK. Unset keeps the engine's original
+default, and explicit impeller remains selectable. This uses the current SDK's
+public project API; older Flutter SDKs were not tested.
 
-- Debug: 5e2c82ba4f2052ab29eee307e1f3364b601aac8e8b6d12676353fb73ea35c887
-- Release: 24c5647069587d34ea18b3fdc8b54a6dfb3bfe8678a81c18b163df971a483d3a
-- Release Flutter libapp.so: 78202626fa1a95fe36c51a055fb06f55a6c8a8ba681b889583b12dbad5659a6c
+Both Debug and Release Flutter bundles rebuilt successfully with two jobs.
+Every controlled case emitted two project-renderer=skia messages, no Impeller
+backend message, and fresh 4K client submissions. Release /proc mappings
+confirmed both the Release Rust core and libapp.so AOT; DISPLAY was absent.
+The remote desktop --server executable/core also came from the separate
+matching Release test bundle. A root service flag alone was not taken as proof
+of desktop-child activation.
 
-**The 2x2 performance matrix has not run.** The new client was connected, but
-source playback was held while awaiting a fresh user foreground/pause
-confirmation; a pause granted for an earlier task was not assumed to remain
-in effect. No source was launched. Consequently no Release FPS gain, appsink
-clock benefit, runtime activation of the unpaced mode or 4K60 pass is claimed.
-The full Release remote connection still needs runtime validation.
+## Completed 2x2 measurements
 
-The next run should compare Debug/default, Debug/unpaced, Release/default and
-Release/unpaced, fixed quality 33 / target60 / original NVENC profile and serial
-NV12. Save sanitized source/client/server evidence per case using the bounded
-sampling procedure above. Repeat an effective pair if needed before changing
-any default. These are measurement prerequisites to later capture lifecycle
-or GPU-native conversion changes; no speculative default optimization was
-made in this task.
+After the user confirmed the pause, each case used a fresh service/client,
+55-second playback and the report-time window from source launch+15 to +50s.
+No builds ran during these intervals. The quality request remained custom33 /
+60 FPS; actual QoS is reported rather than forced. Serial NV12 and the original
+NVENC preset were used throughout. All captured desktops were 3840x2160,
+all server encoder samples reported hardware_encoder=true and all client
+intervals used ffmpeg/hevc/AV_HWDEVICE_TYPE_CUDA.
+
+| Both endpoints | Appsink | Source /s | Accepted /s | Submit FPS | QoS mean | Convert ms | Encode ms | Submit ms |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Debug | Default | 42.54 | 42.12 | 42.13 | 60 | 6.63 | 15.47 | 7.78 |
+| Debug | Unpaced | 42.28 | 41.63 | 41.64 | 60 | 6.89 | 15.82 | 8.36 |
+| Release | Default | 39.38 | 39.35 | 39.39 | 59.77 | 8.07 | 16.16 | 27.82 |
+| Release | Unpaced | 35.79 | 35.53 | 35.75 | 59.43 | 7.83 | 15.86 | 28.18 |
+
+Timing columns are means of window p95 values, not additive end-to-end latency.
+Each stable interval had zero client overflow/discard/decode errors and server
+shared-queue peak0. ACK window-p95 means were 0.42/0.41/0.27/0.27ms; send queue/window-p95
+means stayed around 0.2–0.32ms. Hardware success does not establish 4K60.
+
+The viewport was 3740x2112 for Debug/default, Debug/unpaced and
+Release/unpaced, and 3739x2112 for Release/default, all verified on HDMI-1.
+In the probe's stable elapsed12..47s source records, time position advanced
+across loop boundaries; pause=false, NVDEC and estimated-vf-fps about60.
+Player frame-drop maxima per loop were respectively 1/0/0/3, with decoder
+and delayed-frame counters0. The counters reset when the short file loops;
+they are not aggregate drop counts or compositor presentation proof.
+
+Unpaced cases emitted four recorder-activation messages each and the actual
+Release desktop child had RUSTDESK_PIPEWIRE_UNPACED=1. Default cases emitted
+none. This confirms the experiment ran, but **it showed no throughput benefit
+in this environment**. It remains opt-in and off by default. No code removes
+server pacing, increases queues, changes quality or forces a lower resolution.
+
+**4K60 still failed.** Source production closely tracked accepted/submitted
+rates; queues did not show sustained buildup. The additional Release submission
+wait (about28ms versus8ms) is a separate observation needing client/engine/GPU
+attribution. The final Flutter focus log in each case was active=true, but no
+physical presentation measurement was available. Other GPU workloads remained
+active and source throughput drifted down over time. This sequential matrix
+is not a randomized or same-load proof that Release or unpaced itself caused
+all FPS differences; no percentage regression or improvement is claimed.
+
+## Excluded attempts and limits
+
+The first exploratory Debug/default video viewport was 3072x1728 and was
+excluded from the comparable matrix. The maximization helper now waits between
+fullscreen exit and maximizing, then waits for the configure to settle. It
+still checks output identity; measured viewport size remains necessary.
+An exploratory Release/Impeller run is also excluded because the client
+renderer did not match Debug/Skia.
+
+The first Release service attempt failed GStreamer PLAYING with
+"Element failed to change its state" and disconnected. A fresh service/client
+retry succeeded; no unique root cause or permanent fix for that intermittent
+startup failure was established. One controlled Debug source invocation
+returned nonzero and was discarded/repeated; its failed invocation is not
+included in the matrix. Successful cases all completed their bounded probe.
+Do not turn either transient failure into a confirmed compiler/driver diagnosis.
+
+No fresh keyboard, clipboard, multiscreen, long low-memory, simultaneous dual
+4K60, weak-network quality or physical presentation acceptance was performed.
+The next focused investigation should separate active-only PipeWire capturers
+from the currently retained unused-screen pipeline, and isolate Release client
+submission/engine scheduling with mixed endpoint builds under comparable GPU
+load. GPU-native conversion remains a later path requiring its own validation.
+
+## Verification / artifacts
+
+Commands passed:
+
+```bash
+RUSTDESK_DEV_HWCODEC=1 res/dev/build_linux.sh
+RUSTDESK_DEV_HWCODEC=1 RUSTDESK_DEV_BUILD_MODE=release res/dev/build_linux.sh
+# After the native renderer adapter (no Rust changes), in flutter/:
+PATH="$HOME/.local/share/rustdesk-dev/build-tools:$PATH" RUSTDESK_BUILD_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2 flutter build linux --release --no-pub
+PATH="$HOME/.local/share/rustdesk-dev/build-tools:$PATH" RUSTDESK_BUILD_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2 flutter build linux --debug --no-pub
+# In repository root:
+python3 res/dev/test_display_metrics_time_filter.py
+python3 -m py_compile res/dev/summarize_display_metrics.py res/dev/test_display_metrics_time_filter.py res/dev/playback_motion_probe.py
+bash -n res/dev/build_linux.sh res/dev/run_linux.sh
+git diff --check
+```
+
+Time-filter regression: 1 passed. The native builds and real main/remote-window
+activation verify the renderer hook; no synthetic implementation-mirroring
+renderer test was added. Only the generated analyzer-header change was restored.
+
+Core hashes match local and OMEN staged bundles:
+
+- Debug core: 5e2c82ba4f2052ab29eee307e1f3364b601aac8e8b6d12676353fb73ea35c887
+- Release core: 24c5647069587d34ea18b3fdc8b54a6dfb3bfe8678a81c18b163df971a483d3a
+- Release Flutter AOT: 78202626fa1a95fe36c51a055fb06f55a6c8a8ba681b889583b12dbad5659a6c
+- Final Debug runner: deb35ef803364aa79a5e4ee12fb3da244a5362f56f4a8b9d7e01737775bf6bc2
+- Final Release runner: 3c0b7b0a7d19315d3fbd8354fee647dfc71d3e116160ee3b1a641c91889525c9
+- Release desktop_multi_window plugin: 6cf9b628c99e7b5960682582f079306d9a6142aa1785d80f09f57c50200e0cdb
+
+Private evidence: ~/.cache/rustdesk-dev/clock-controlled-{debug,release}-{clock,unpaced}-*
+contains sanitized stage summaries, bounded source reports and private runtime
+logs. Full logs/configuration/screenshots/VM URLs are not committed or uploaded.
+
+Additional regression surface for this verification turn:
+
+- flutter/linux/renderer_view.h: new explicit development project setting.
+- flutter/linux/CMakeLists.txt: include the adapter in two Linux C++ targets.
+- res/dev/run_linux.sh: export the already-validated renderer choice.
+- res/dev/playback_motion_probe.py: allow asynchronous fullscreen exit before
+  requesting maximization; no capture/codec behavior change.
+
+No shared Rust trait, signature, dependency revision, submodule, installed
+binary, protocol, authentication or default quality policy changed.
 
 ## Cleanup / rollback
 
-The waiting orchestrator was stopped before playback. The temporary /run
-service override was removed, original OMEN rustdesk.service restored active,
-and the three local quality/FPS fields restored from a private backup without
-printing or replacing credentials. The default Debug native client was
-relaunched with metrics and all experimental flags unset. The independent
-/opt test bundles and private staging/build logs remain for the next test;
-the installed binaries were never replaced. No network, monitor or unrelated
-service configuration changed.
+All bounded source probes exited. The temporary /run service override was
+removed and original OMEN rustdesk.service restored active. The three local
+quality/FPS fields were restored and compared with the private backup, without
+printing or replacing credentials. The default Debug native client reconnected
+to AOC: fresh PeerInfo1.5.0/Linux/currentDisplay0, H265 statistics and zero
+metrics events. This is reconnect readiness, not repeated input acceptance.
 
-To return to the original capture clock, leave RUSTDESK_PIPEWIRE_UNPACED unset.
-To return to the original development build behavior, leave
-RUSTDESK_DEV_BUILD_MODE unset. No permanent deployment or Gitea push performed.
+Separate /opt test bundles and private staging/build logs remain for reuse;
+installed binaries were not replaced. No network, monitor or unrelated service
+configuration changed. To restore original sink behavior leave
+RUSTDESK_PIPEWIRE_UNPACED unset. Leaving RUSTDESK_DEV_BUILD_MODE unset selects
+Debug. For the native renderer adapter, leaving RUSTDESK_DEV_RENDERER unset
+when directly launching the bundle preserves the engine default. A scoped
+revert of the Linux adapter/CMake hook/launcher export removes that hook.
+No permanent deployment or Gitea push performed.
 
-Post-cleanup check: fresh PeerInfo version1.5.0/Linux/currentDisplay0 and H265
-statistics were present, and the restored client emitted zero display_metrics
-events. This confirms reconnect/readiness only; no fresh keyboard, clipboard,
-multiscreen or dynamic throughput acceptance is claimed here.
+User clarification after the tests: the earlier report of a seemingly stuck
+window referred to needing the remote desktop-sharing selection, not a client
+hang. Keep this separate from the logged first-attempt GStreamer PLAYING
+failure; no causal link between those events was established. A private rendered
+snapshot of the restored Debug remote view contained the OMEN desktop and the
+Tailscale TCP connection was established. Snapshot visibility / cached model
+statistics alone cannot prove physical display freshness or replace any new
+remote-side Portal approval. If a new sharing prompt appears, select the
+intended screen on OMEN and approve it there. No chooser was bypassed or
+approved blindly, and authorization waiting was not included in stable FPS data.
+
+Sanitized verified lessons appended to NAS knowledge base and read back:
+`experience/2026-10-23-rustdesk-1-5-0-flutter-3-47-linux-build-and-tailscale-dual-m.md`.

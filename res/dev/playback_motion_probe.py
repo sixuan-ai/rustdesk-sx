@@ -55,8 +55,11 @@ with tempfile.TemporaryDirectory(prefix='rd-motion-') as temp:
         else: raise RuntimeError('Compositor did not place test window on requested output')
         if args.mode == 'maximized':
             command('set_property','fullscreen',False)
-            command('set_property','window-maximized',True)
+            # Wayland applies fullscreen exit asynchronously. A maximize request
+            # sent before that configure can leave a smaller restored window.
             time.sleep(.5)
+            command('set_property','window-maximized',True)
+            time.sleep(1)
             if args.output not in (command('get_property','display-names') or []):
                 raise RuntimeError('Maximized test window moved to another output')
         started = time.monotonic()

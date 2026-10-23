@@ -152,6 +152,12 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Apply the development renderer to main and plugin-created FlDartProjects.
+foreach(renderer_target ${BINARY_NAME} desktop_multi_window_plugin)
+  target_compile_options(${renderer_target} PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:-include${CMAKE_CURRENT_SOURCE_DIR}/renderer_view.h>")
+endforeach()
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build

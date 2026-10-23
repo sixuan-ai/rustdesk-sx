@@ -64,6 +64,7 @@ if [[ -n "$gtk_prefix" ]]; then
   fi
 fi
 renderer="${RUSTDESK_DEV_RENDERER:-skia}"
+export RUSTDESK_DEV_RENDERER="$renderer"
 case "$renderer" in
   skia) switch='enable-impeller=false' ;;
   impeller) switch='enable-impeller=true' ;;
