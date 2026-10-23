@@ -18,12 +18,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--state", required=True)
 parser.add_argument("--label", default="OMEN")
 parser.add_argument("--position", default="100,100")
+parser.add_argument("--keep-above", action="store_true")
 args = parser.parse_args()
 state_path = Path(args.state)
 state = {"label": args.label, "text": "", "clicks": 0, "ticks": 0}
 
 window = Gtk.Window(title=f"RustDesk verification — {args.label}")
 window.set_default_size(1600, 900)
+if args.keep_above:
+    window.set_keep_above(True)
 window.move(*map(int, args.position.split(",")))
 css = Gtk.CssProvider()
 css.load_from_data(b"* { font-size: 48px; } entry, button { min-height: 100px; }")
@@ -80,6 +83,10 @@ def present():
     # GNOME may override a position requested before the X11 window is mapped.
     window.move(*map(int, args.position.split(",")))
     window.present()
+    if args.keep_above and window.get_window() is not None:
+        # Make an explicitly requested test overlay usable above a fullscreen app.
+        window.get_window().raise_()
+        window.get_window().focus(Gdk.CURRENT_TIME)
     return False
 
 

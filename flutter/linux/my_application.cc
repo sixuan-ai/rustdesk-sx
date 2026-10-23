@@ -94,6 +94,8 @@ static void on_subwindow_created(FlPluginRegistry* registry) {
   // Set up side button forwarding for sub-windows.
   if (registry == NULL || !FL_IS_VIEW(registry)) return;
   FlView* view = FL_VIEW(registry);
+  g_message("RustDesk subwindow GTK backend: %s",
+            G_OBJECT_TYPE_NAME(gtk_widget_get_display(GTK_WIDGET(view))));
   GtkWidget* toplevel = gtk_widget_get_toplevel(GTK_WIDGET(view));
   if (toplevel != NULL && GTK_IS_WINDOW(toplevel)) {
     FlMethodChannel* channel = side_buttons_create_channel(fl_view_get_engine(view));
@@ -111,6 +113,8 @@ static void my_application_activate(GApplication* application) {
 
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+  g_message("RustDesk main GTK backend: %s",
+            G_OBJECT_TYPE_NAME(gtk_widget_get_display(GTK_WIDGET(window))));
   gtk_window_set_decorated(window, FALSE);
   // try setting icon for rustdesk, which uses the system cache
   GtkIconTheme* theme = gtk_icon_theme_get_default();

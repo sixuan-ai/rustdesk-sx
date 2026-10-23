@@ -1,0 +1,22 @@
+From upstream e6372d2923d04bb2bdc88fa526ca57704ca2664a
+Author: Tamaranch
+Subject: a11y: Browse key listener list safely
+Source: https://github.com/GNOME/gtk/commit/e6372d2923d04bb2bdc88fa526ca57704ca2664a
+License: LGPL-2.0-or-later, as in the GTK source file
+
+diff --git a/gtk/a11y/gtkaccessibilityutil.c b/gtk/a11y/gtkaccessibilityutil.c
+--- a/gtk/a11y/gtkaccessibilityutil.c
++++ b/gtk/a11y/gtkaccessibilityutil.c
+@@ -147,9 +147,11 @@ _gtk_accessibility_key_snooper (GtkWidget   *widget,
+ 
+   atk_key_event_from_gdk_event_key (event, &atk_event);
+ 
+-  for (l = key_listener_list; l; l = l->next)
++  l = key_listener_list;
++  while (l != NULL)
+     {
+       KeyEventListener *listener = l->data;
++      l = l->next;
+ 
+       result |= listener->func (&atk_event, listener->data);
+     }
