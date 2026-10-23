@@ -1,5 +1,7 @@
 # RustDesk UI 与网络开发基线
 
+本文保留首次源码导览时的观察。后续用户要求统一使用最新稳定 SDK；环境适配、构建及 OMEN 双屏验收已经完成，以 [Linux 构建验收记录](development-linux-latest-stable-2026-10-23.md) 为当前状态。
+
 ## 基线
 
 - 观察日期：2026-10-23；本机目录 `/home/x/code/rustdesk`。
