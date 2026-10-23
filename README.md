@@ -1,6 +1,6 @@
 # RustDesk · 思玄二次开发版
 
-**仓库：[`rustdesk-sx`](https://github.com/zhaojiaxiang370711/rustdesk-sx) · 二次开发维护：转瞬之澜（思玄）**
+**仓库：[`rustdesk-sx`](https://github.com/sixuan-ai/rustdesk-sx) · 二次开发维护：转瞬之澜（思玄）**
 
 基于 [RustDesk](https://github.com/rustdesk/rustdesk) 1.5.0 的独立维护版本，保留上游来源、作者声明和 AGPL-3.0 许可证。
 

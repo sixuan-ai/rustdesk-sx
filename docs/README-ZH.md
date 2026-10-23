@@ -1,6 +1,6 @@
 # RustDesk · 思玄二次开发版
 
-二次开发维护：**转瞬之澜（思玄）**。公开仓库：[rustdesk-sx](https://github.com/zhaojiaxiang370711/rustdesk-sx)。
+二次开发维护：**转瞬之澜（思玄）**。公开仓库：[rustdesk-sx](https://github.com/sixuan-ai/rustdesk-sx)。
 
 本版本基于 RustDesk 1.5.0，重点开发中文／MiSans UI、原生 Wayland、中文输入辅助及高分辨率远控。项目代码沿用 AGPL-3.0，保留上游署名；MiSans 等第三方资源保留独立许可。
 

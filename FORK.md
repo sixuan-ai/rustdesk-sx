@@ -1,7 +1,8 @@
 # RustDesk · 思玄二次开发版
 
-- 项目仓库：https://github.com/zhaojiaxiang370711/rustdesk-sx
+- 项目仓库：https://github.com/sixuan-ai/rustdesk-sx
 - 二次开发维护：**转瞬之澜（思玄）**。
+- GitHub 账号：[Max Stark（@sixuan-ai）](https://github.com/sixuan-ai)。
 - 上游项目：[rustdesk/rustdesk](https://github.com/rustdesk/rustdesk)。
 - 上游稳定基线：`1.5.0`，提交 `fada664df7a294d1d1a9ca3e7cd3637069122f17`。
 - 当前开发分支：`codex/stable-1.5.0-dev`。
@@ -28,7 +29,7 @@ RustDesk 名称及原有标识属于其原权利人；本仓库通过“思玄�
 ## 构建入口
 
 ```bash
-git clone --recurse-submodules https://github.com/zhaojiaxiang370711/rustdesk-sx.git
+git clone --recurse-submodules https://github.com/sixuan-ai/rustdesk-sx.git
 cd rustdesk-sx
 ```
 
