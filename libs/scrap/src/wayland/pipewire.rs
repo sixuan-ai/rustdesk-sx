@@ -262,6 +262,7 @@ pub struct PipeWireRecorder {
     width: usize,
     height: usize,
     saved_raw_data: Vec<u8>, // for faster compare and copy
+    metrics: Option<super::capture_metrics::CaptureMetrics>,
 }
 
 // Element creation fails the same way for a plugin that is not installed as for one that is
@@ -277,6 +278,7 @@ fn gst_element(name: &str) -> ResultType<gst::Element> {
 impl PipeWireRecorder {
     pub fn new(capturable: PipeWireCapturable) -> ResultType<Self> {
         let pipeline = gst::Pipeline::new(None);
+        let metrics = super::capture_metrics::CaptureMetrics::new(capturable.path);
 
         let src = gst_element("pipewiresrc")?;
         src.set_property("fd", &capturable.fd.as_raw_fd())?;
@@ -286,6 +288,9 @@ impl PipeWireRecorder {
         // For some reason pipewire blocks on destruction of AppSink if this is not set to true,
         // see: https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/982
         src.set_property("always-copy", &true)?;
+        if metrics.is_some() {
+            super::capture_metrics::attach_source_probe(&src, capturable.path);
+        }
 
         // COSMIC/Wayland fix: insert videoconvert between pipewiresrc and appsink.
         // xdg-desktop-portal-cosmic's modifier negotiation fails when the downstream
@@ -361,16 +366,23 @@ impl PipeWireRecorder {
             buffer_cropped: vec![],
             is_cropped: false,
             saved_raw_data: Vec::new(),
+            metrics,
         })
     }
 }
 
 impl Recorder for PipeWireRecorder {
     fn capture(&mut self, timeout_ms: u64) -> Result<PixelProvider<'_>, Box<dyn Error>> {
-        if let Some(sample) = self
-            .appsink
-            .try_pull_sample(gst::ClockTime::from_mseconds(timeout_ms))
-        {
+        if let Some(metrics) = &mut self.metrics {
+            metrics.report();
+        }
+        let pull_start = super::capture_metrics::CaptureMetrics::begin(&self.metrics);
+        let sample = self.appsink.try_pull_sample(gst::ClockTime::from_mseconds(timeout_ms));
+        super::capture_metrics::CaptureMetrics::end(&mut self.metrics, 0, pull_start);
+        if let Some(metrics) = &mut self.metrics {
+            metrics.pulled(sample.is_some());
+        }
+        if let Some(sample) = sample {
             let cap = sample
                 .get_caps()
                 .ok_or("Failed get caps")?
@@ -388,6 +400,9 @@ impl Recorder for PipeWireRecorder {
             let buf = sample
                 .get_buffer_owned()
                 .ok_or_else(|| GStreamerError("Failed to get owned buffer.".into()))?;
+            if let Some(metrics) = &mut self.metrics {
+                metrics.buffer(buf.get_pts().nseconds(), (w, h));
+            }
             let mut crop = buf
                 .get_meta::<gstreamer_video::VideoCropMeta>()
                 .map(|m| m.get_rect());
@@ -395,15 +410,26 @@ impl Recorder for PipeWireRecorder {
             if Some((0, 0, w as u32, h as u32)) == crop {
                 crop = None;
             }
+            let map_start = super::capture_metrics::CaptureMetrics::begin(&self.metrics);
             let buf = buf
                 .into_mapped_buffer_readable()
                 .map_err(|_| GStreamerError("Failed to map buffer.".into()))?;
-            if let Err(..) = crate::would_block_if_equal(&mut self.saved_raw_data, buf.as_slice()) {
+            super::capture_metrics::CaptureMetrics::end(&mut self.metrics, 1, map_start);
+            let compare_start = super::capture_metrics::CaptureMetrics::begin(&self.metrics);
+            let duplicate = crate::would_block_if_equal(&mut self.saved_raw_data, buf.as_slice()).is_err();
+            super::capture_metrics::CaptureMetrics::end(&mut self.metrics, 2, compare_start);
+            if let Some(metrics) = &mut self.metrics {
+                metrics.compared(duplicate);
+            }
+            if duplicate {
                 return Ok(PixelProvider::NONE);
             }
             let buf_size = buf.get_size();
             // BGRx is 4 bytes per pixel
             if buf_size != (w * h * 4) {
+                if let Some(metrics) = &mut self.metrics {
+                    metrics.invalid();
+                }
                 // for some reason the width and height of the caps do not guarantee correct buffer
                 // size, so ignore those buffers, see:
                 // https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/985
@@ -417,6 +443,7 @@ impl Recorder for PipeWireRecorder {
             } else {
                 // Copy region specified by crop into self.buffer_cropped
                 // TODO: Figure out if ffmpeg provides a zero copy alternative
+                let crop_start = super::capture_metrics::CaptureMetrics::begin(&self.metrics);
                 if let Some((x_off, y_off, w_crop, h_crop)) = crop {
                     let x_off = x_off as usize;
                     let y_off = y_off as usize;
@@ -435,6 +462,10 @@ impl Recorder for PipeWireRecorder {
                 } else {
                     self.width = w;
                     self.height = h;
+                }
+                super::capture_metrics::CaptureMetrics::end(&mut self.metrics, 3, crop_start);
+                if let Some(metrics) = &mut self.metrics {
+                    metrics.accepted();
                 }
                 self.is_cropped = crop.is_some();
                 self.buffer = Some(buf);

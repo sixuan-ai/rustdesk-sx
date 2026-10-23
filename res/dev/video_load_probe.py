@@ -17,6 +17,7 @@ p.add_argument('--seconds', type=int, default=90)
 p.add_argument('--fps', type=int, choices=(30, 60), default=60)
 p.add_argument('--width', type=int, default=3840)
 p.add_argument('--height', type=int, default=2160)
+p.add_argument('--unpaced-sink', action='store_true', help='Disable sink clock waiting for source throughput isolation')
 args = p.parse_args()
 display = Gdk.Display.get_default()
 if not display or not 0 <= args.monitor < display.get_n_monitors():
@@ -32,8 +33,14 @@ pipeline = Gst.parse_launch(
     'text-overlay=false signal-fps-measurements=true fps-update-interval=1000')
 metrics = pipeline.get_by_name('metrics')
 metrics.set_property('video-sink', sink)
+if args.unpaced_sink:
+    metrics.set_property('sync', False)
+    sink.set_property('sync', False)
+    sink.set_property('qos', False)
+    sink.set_property('max-lateness', -1)
+paint_frames = 0
 metrics.connect('fps-measurements', lambda _s, fps, drop, avg:
-    print(json.dumps({'elapsed_s': time.monotonic() - started, 'source_sink_fps': fps, 'drop_rate': drop, 'average_fps': avg}), flush=True))
+    print(json.dumps({'elapsed_s': time.monotonic() - started, 'source_sink_fps': fps, 'drop_rate': drop, 'average_fps': avg, 'gtk_paint_frames': paint_frames}), flush=True))
 window = Gtk.Window(title='RustDesk GPU 4K motion verification')
 window.add(sink.get_property('widget'))
 window.fullscreen_on_monitor(window.get_screen(), args.monitor)
@@ -41,6 +48,19 @@ window.connect('destroy', Gtk.main_quit)
 window.show_all()
 started = time.monotonic()
 failed = False
+
+def painted(_clock):
+    global paint_frames
+    paint_frames += 1
+
+def observe_frame_clock():
+    clock = window.get_frame_clock()
+    if clock is None:
+        return True
+    clock.connect('after-paint', painted)
+    return False
+
+GLib.timeout_add(100, observe_frame_clock)
 
 def animate():
     pipeline.get_by_name('motion').set_property('rotation-z', (time.monotonic() - started) * 12 % 360)

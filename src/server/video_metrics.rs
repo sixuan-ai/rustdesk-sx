@@ -28,7 +28,13 @@ impl VideoMetrics {
         }
     }
 
-    pub fn report(&mut self, display: usize, dimensions: (usize, usize), hardware: bool) {
+    pub fn report(
+        &mut self,
+        display: usize,
+        dimensions: (usize, usize),
+        hardware: bool,
+        target_fps: u32,
+    ) {
         let elapsed = self.start.elapsed();
         if elapsed < Duration::from_secs(1) {
             return;
@@ -52,7 +58,7 @@ impl VideoMetrics {
         log::info!(
             "server_display_metrics {}",
             json!({"display": display,
-            "width": dimensions.0, "height": dimensions.1, "hardware_encoder": hardware,
+            "width": dimensions.0, "height": dimensions.1, "hardware_encoder": hardware, "target_fps": target_fps,
             "window_ms": elapsed.as_secs_f64() * 1000., "capture_call_ms": stages[0],
             "pixel_convert_ms": stages[1], "encode_ms": stages[2], "enqueue_ms": stages[3]})
         );

@@ -734,7 +734,7 @@ fn run(vs: VideoService) -> ResultType<()> {
 
     while sp.ok() {
         if let Some(metrics) = &mut metrics {
-            metrics.report(display_idx, (capture_width, capture_height), encoder.is_hardware());
+            metrics.report(display_idx, (capture_width, capture_height), encoder.is_hardware(), VIDEO_QOS.lock().unwrap().fps());
         }
         #[cfg(windows)]
         check_uac_switch(c.privacy_mode_id, c._capturer_privacy_mode_id)?;
