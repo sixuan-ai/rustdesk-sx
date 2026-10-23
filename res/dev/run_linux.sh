@@ -6,7 +6,7 @@ case "$mode" in
   debug|release) ;;
   *) echo 'RUSTDESK_DEV_BUILD_MODE must be debug or release' >&2; exit 1 ;;
 esac
-bundle="$PWD/flutter/build/linux/x64/$mode/bundle/rustdesk"
+bundle="${RUSTDESK_DEV_BUNDLE_DIR:-$PWD/flutter/build/linux/x64/$mode/bundle}/rustdesk"
 [[ -x "$bundle" ]] || { echo 'Run res/dev/build_linux.sh first' >&2; exit 1; }
 
 # Prefer the native session backend. An explicit override remains useful for

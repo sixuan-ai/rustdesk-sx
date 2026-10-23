@@ -236,12 +236,12 @@ fn get_res(capturable: PipeWireCapturable) -> Result<(usize, usize), Box<dyn Err
         .try_pull_sample(gst::ClockTime::from_mseconds(300))
     {
         let cap = sample
-            .get_caps()
+            .caps()
             .ok_or("Failed get caps")?
-            .get_structure(0)
+            .structure(0)
             .ok_or("Failed to get structure")?;
-        let w: i32 = cap.get_value("width")?.get_some()?;
-        let h: i32 = cap.get_value("height")?.get_some()?;
+        let w: i32 = cap.get::<i32>("width")?;
+        let h: i32 = cap.get::<i32>("height")?;
         let w = w as usize;
         let h = h as usize;
         Ok((w, h))
@@ -270,7 +270,7 @@ pub struct PipeWireRecorder {
 // broken, so the tag does not claim which. Only the name travels to the peer -- it is what
 // says which package to look at -- and the factory's own error stays here in the log.
 fn gst_element(name: &str) -> ResultType<gst::Element> {
-    gst::ElementFactory::make(name, None).map_err(|e| {
+    gst::ElementFactory::make(name).build().map_err(|e| {
         error!("Failed to create GStreamer element {}: {}", name, e);
         anyhow!(stage_err("gst-plugin", "unavailable", name))
     })
@@ -278,17 +278,17 @@ fn gst_element(name: &str) -> ResultType<gst::Element> {
 
 impl PipeWireRecorder {
     pub fn new(capturable: PipeWireCapturable) -> ResultType<Self> {
-        let pipeline = gst::Pipeline::new(None);
+        let pipeline = gst::Pipeline::new();
         let metrics = super::capture_metrics::CaptureMetrics::new(capturable.path);
 
         let src = gst_element("pipewiresrc")?;
-        src.set_property("fd", &capturable.fd.as_raw_fd())?;
-        src.set_property("path", &format!("{}", capturable.path))?;
-        src.set_property("keepalive_time", &1_000.as_raw_fd())?;
+        src.set_property("fd", &capturable.fd.as_raw_fd());
+        src.set_property("path", &format!("{}", capturable.path));
+        src.set_property("keepalive_time", &1_000.as_raw_fd());
 
         // For some reason pipewire blocks on destruction of AppSink if this is not set to true,
         // see: https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/982
-        src.set_property("always-copy", &true)?;
+        src.set_property("always-copy", &true);
         if metrics.is_some() {
             super::capture_metrics::attach_source_probe(&src, capturable.path);
         }
@@ -302,19 +302,19 @@ impl PipeWireRecorder {
         let convert = gst_element("videoconvert")?;
 
         let sink = gst_element("appsink")?;
-        sink.set_property("drop", &true)?;
-        sink.set_property("max-buffers", &1u32)?;
+        sink.set_property("drop", &true);
+        sink.set_property("max-buffers", &1u32);
         if std::env::var("RUSTDESK_PIPEWIRE_UNPACED").as_deref() == Ok("1") {
             // Screen capture is consumed at the video service's cadence; this
             // experiment removes the sink clock wait while retaining one latest buffer.
-            sink.set_property("sync", &false)?;
+            sink.set_property("sync", &false);
             if sink.find_property("processing-deadline").is_some() {
-                sink.set_property("processing-deadline", &0u64)?;
+                sink.set_property("processing-deadline", &0u64);
             }
             hbb_common::log::info!("PipeWire unpaced appsink enabled");
         }
 
-        pipeline.add_many(&[&src, &convert, &sink])?;
+        pipeline.add_many([&src, &convert, &sink])?;
         src.link(&convert)?;
         convert.link(&sink)?;
 
@@ -322,19 +322,21 @@ impl PipeWireRecorder {
             .dynamic_cast::<AppSink>()
             .map_err(|_| GStreamerError("Sink element is expected to be an appsink!".into()))?;
         let mut caps = gst::Caps::new_empty();
-        caps.merge_structure(gst::structure::Structure::new(
-            "video/x-raw",
-            &[("format", &"BGRx")],
-        ));
-        caps.merge_structure(gst::structure::Structure::new(
-            "video/x-raw",
-            &[("format", &"RGBx")],
-        ));
+        caps.make_mut().append_structure(
+            gst::Structure::builder("video/x-raw")
+                .field("format", "BGRx")
+                .build(),
+        );
+        caps.make_mut().append_structure(
+            gst::Structure::builder("video/x-raw")
+                .field("format", "RGBx")
+                .build(),
+        );
         appsink.set_caps(Some(&caps));
 
         // [Workaround]
         // Crash may occur if there are multiple pipelines started at the same time.
-        // `pipeline.get_state()` can significantly reduce the probability of crashes,
+        // `pipeline.state()` can significantly reduce the probability of crashes,
         // but cannot completely resolve this issue.
         // Adding a short sleep period can also reduce the probability of crashes.
         debug!(
@@ -348,7 +350,7 @@ impl PipeWireRecorder {
         if is_server_running() {
             // Wait for the state change to actually complete before proceeding.
             // The 2000ms timeout for pipeline state change was chosen based on empirical testing.
-            let state_change = pipeline.get_state(gst::ClockTime::from_mseconds(2000));
+            let state_change = pipeline.state(gst::ClockTime::from_mseconds(2000));
             match state_change {
                 (Ok(_), gst::State::Playing, _) => {
                     debug!(
@@ -395,28 +397,25 @@ impl Recorder for PipeWireRecorder {
         }
         if let Some(sample) = sample {
             let cap = sample
-                .get_caps()
+                .caps()
                 .ok_or("Failed get caps")?
-                .get_structure(0)
+                .structure(0)
                 .ok_or("Failed to get structure")?;
-            let w: i32 = cap.get_value("width")?.get_some()?;
-            let h: i32 = cap.get_value("height")?.get_some()?;
+            let w: i32 = cap.get::<i32>("width")?;
+            let h: i32 = cap.get::<i32>("height")?;
             let w = w as usize;
             let h = h as usize;
-            self.pix_fmt = cap
-                .get::<&str>("format")?
-                .ok_or("Failed to get pixel format")?
-                .to_string();
+            self.pix_fmt = cap.get::<&str>("format")?.to_string();
 
             let buf = sample
-                .get_buffer_owned()
+                .buffer_owned()
                 .ok_or_else(|| GStreamerError("Failed to get owned buffer.".into()))?;
             if let Some(metrics) = &mut self.metrics {
-                metrics.buffer(buf.get_pts().nseconds(), (w, h));
+                metrics.buffer(buf.pts().map(|pts| pts.nseconds()), (w, h));
             }
             let mut crop = buf
-                .get_meta::<gstreamer_video::VideoCropMeta>()
-                .map(|m| m.get_rect());
+                .meta::<gstreamer_video::VideoCropMeta>()
+                .map(|m| m.rect());
             // only crop if necessary
             if Some((0, 0, w as u32, h as u32)) == crop {
                 crop = None;
@@ -441,7 +440,7 @@ impl Recorder for PipeWireRecorder {
             if duplicate {
                 return Ok(PixelProvider::NONE);
             }
-            let buf_size = buf.get_size();
+            let buf_size = buf.size();
             // BGRx is 4 bytes per pixel
             if buf_size != (w * h * 4) {
                 if let Some(metrics) = &mut self.metrics {
@@ -518,7 +517,7 @@ impl Drop for PipeWireRecorder {
             warn!("Failed to stop GStreamer pipeline: {}.", err);
         }
         // Wait for state change to complete to avoid races during PipeWire teardown.
-        let _ = self.pipeline.get_state(gst::ClockTime::from_mseconds(2000));
+        let _ = self.pipeline.state(gst::ClockTime::from_mseconds(2000));
     }
 }
 

@@ -167,7 +167,7 @@ mod tests {
 pub fn attach_source_probe(source: &gstreamer::Element, node: u64) {
     use gstreamer::{prelude::*, PadProbeData, PadProbeReturn, PadProbeType};
     use std::sync::Mutex;
-    let Some(pad) = source.get_static_pad("src") else {
+    let Some(pad) = source.static_pad("src") else {
         log::warn!("PipeWire source metrics unavailable: no source pad");
         return;
     };
@@ -189,7 +189,7 @@ pub fn attach_source_probe(source: &gstreamer::Element, node: u64) {
                 metrics.start = Instant::now();
             }
             metrics.pulled(true);
-            metrics.buffer(buffer.get_pts().nseconds(), (0, 0));
+            metrics.buffer(buffer.pts().map(|pts| pts.nseconds()), (0, 0));
         }
         PadProbeReturn::Ok
     });
