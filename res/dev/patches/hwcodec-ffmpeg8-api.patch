@@ -1,0 +1,15 @@
+--- a/cpp/common/util.cpp
++++ b/cpp/common/util.cpp
+@@ -16,0 +17,7 @@
++
++#ifndef FF_PROFILE_H264_HIGH
++#define FF_PROFILE_H264_HIGH AV_PROFILE_H264_HIGH
++#endif
++#ifndef FF_PROFILE_HEVC_MAIN
++#define FF_PROFILE_HEVC_MAIN AV_PROFILE_HEVC_MAIN
++#endif
+--- a/cpp/ffmpeg_ram/ffmpeg_ram_decode.cpp
++++ b/cpp/ffmpeg_ram/ffmpeg_ram_decode.cpp
+@@ -215 +215 @@
+-#if FF_API_FRAME_KEY
++#if defined(AV_FRAME_FLAG_KEY)

@@ -382,6 +382,12 @@ impl<T: InvokeUiSession> Remote<T> {
                             self.video_threads.iter().for_each(|(_, v)| {
                                 *v.frame_count.write().unwrap() = 0;
                             });
+                            for (display, thread) in &self.video_threads {
+                                if let Some(metrics) = &thread.metrics {
+                                    let queued = thread.video_queue.read().unwrap().len();
+                                    metrics.lock().unwrap().report(*display, Duration::from_millis(elapsed as u64), queued);
+                                }
+                            }
                             self.fps_control(direct, fps.clone());
                             let chroma = self.chroma.read().unwrap().clone();
                             let chroma = match chroma {
@@ -1544,7 +1550,9 @@ impl<T: InvokeUiSession> Remote<T> {
                     let Some(thread) = self.video_threads.get_mut(&display) else {
                         return true;
                     };
-                    if Self::contains_key_frame(&vf) {
+                    let key_frame = Self::contains_key_frame(&vf);
+                    let vf = client::display_metrics::QueuedVideoFrame::new(vf, &thread.metrics);
+                    if key_frame {
                         thread
                             .video_sender
                             .send(MediaData::VideoFrame(Box::new(vf)))
@@ -1552,6 +1560,9 @@ impl<T: InvokeUiSession> Remote<T> {
                     } else {
                         let video_queue = thread.video_queue.read().unwrap();
                         if video_queue.force_push(vf).is_some() {
+                            if let Some(metrics) = &thread.metrics {
+                                metrics.lock().unwrap().overflow();
+                            }
                             drop(video_queue);
                             self.handler.refresh_video(display as _);
                         } else {
@@ -2658,7 +2669,9 @@ impl<T: InvokeUiSession> Remote<T> {
         let decode_fps = Arc::new(RwLock::new(None));
         let frame_count = Arc::new(RwLock::new(0));
         let discard_queue = Arc::new(RwLock::new(false));
+        let metrics = client::display_metrics::DisplayMetrics::enabled();
         let video_thread = VideoThread {
+            metrics: metrics.clone(),
             video_queue: video_queue.clone(),
             video_sender,
             decode_fps: decode_fps.clone(),
@@ -2675,6 +2688,7 @@ impl<T: InvokeUiSession> Remote<T> {
             decode_fps,
             self.chroma.clone(),
             discard_queue,
+            metrics,
             move |display: usize,
                   data: &mut scrap::ImageRgb,
                   _texture: *mut c_void,
@@ -2909,7 +2923,8 @@ struct FpsControl {
 }
 
 struct VideoThread {
-    video_queue: Arc<RwLock<ArrayQueue<VideoFrame>>>,
+    video_queue: Arc<RwLock<ArrayQueue<client::display_metrics::QueuedVideoFrame>>>,
+    metrics: client::display_metrics::Metrics,
     video_sender: MediaSender,
     decode_fps: Arc<RwLock<Option<usize>>>,
     frame_count: Arc<RwLock<usize>>,

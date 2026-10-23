@@ -76,6 +76,7 @@ pub mod display_service;
 pub mod portable_service;
 mod service;
 mod video_qos;
+pub(crate) mod video_metrics;
 pub mod video_service;
 
 #[cfg(all(target_os = "windows", feature = "flutter"))]

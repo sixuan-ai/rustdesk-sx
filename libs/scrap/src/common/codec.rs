@@ -623,6 +623,27 @@ impl Decoder {
         self.format
     }
 
+    /// The selected implementation, rather than the negotiated codec alone.
+    pub fn diagnostic_name(&self) -> String {
+        #[cfg(feature = "hwcodec")]
+        if let Some(decoder) = self.h264_ram.as_ref().or(self.h265_ram.as_ref()) {
+            return format!("ffmpeg/{}/{:?}", decoder.info.name, decoder.info.hwdevice);
+        }
+        #[cfg(feature = "vram")]
+        if self.h264_vram.is_some() || self.h265_vram.is_some() {
+            return format!("vram/{:?}", self.format);
+        }
+        #[cfg(feature = "mediacodec")]
+        if self.h264_media_codec.is_some() || self.h265_media_codec.is_some() {
+            return format!("mediacodec/{:?}", self.format);
+        }
+        match self.format {
+            CodecFormat::VP8 | CodecFormat::VP9 => "libvpx/software".into(),
+            CodecFormat::AV1 => "aom/software".into(),
+            _ => "unavailable".into(),
+        }
+    }
+
     pub fn valid(&self) -> bool {
         self.valid
     }

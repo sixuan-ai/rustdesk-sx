@@ -727,11 +727,15 @@ fn run(vs: VideoService) -> ResultType<()> {
     let repeat_encode_max = 10;
     let mut encode_fail_counter = 0;
     let mut first_frame = true;
+    let mut metrics = super::video_metrics::VideoMetrics::new();
     let capture_width = c.width;
     let capture_height = c.height;
     let (mut second_instant, mut send_counter) = (Instant::now(), 0);
 
     while sp.ok() {
+        if let Some(metrics) = &mut metrics {
+            metrics.report(display_idx, (capture_width, capture_height), encoder.is_hardware());
+        }
         #[cfg(windows)]
         check_uac_switch(c.privacy_mode_id, c._capturer_privacy_mode_id)?;
         check_qos(
@@ -796,7 +800,10 @@ fn run(vs: VideoService) -> ResultType<()> {
 
         let time = now - start;
         let ms = (time.as_secs() * 1000 + time.subsec_millis() as u64) as i64;
-        let res = match c.frame(spf) {
+        let capture_start = super::video_metrics::VideoMetrics::begin(&metrics);
+        let captured = c.frame(spf);
+        super::video_metrics::VideoMetrics::end(&mut metrics, 0, capture_start);
+        let res = match captured {
             Ok(frame) => {
                 repeat_encode_counter = 0;
                 if frame.valid() {
@@ -847,7 +854,9 @@ fn run(vs: VideoService) -> ResultType<()> {
                         }
                     }
 
+                    let convert_start = super::video_metrics::VideoMetrics::begin(&metrics);
                     let frame = frame.to(encoder.yuvfmt(), &mut yuv, &mut mid_data)?;
+                    super::video_metrics::VideoMetrics::end(&mut metrics, 1, convert_start);
                     let send_conn_ids = handle_one_frame(
                         display_idx,
                         &sp,
@@ -859,6 +868,7 @@ fn run(vs: VideoService) -> ResultType<()> {
                         &mut first_frame,
                         capture_width,
                         capture_height,
+                        &mut metrics,
                     )?;
                     frame_controller.set_send(now, send_conn_ids);
                     send_counter += 1;
@@ -923,6 +933,7 @@ fn run(vs: VideoService) -> ResultType<()> {
                             &mut first_frame,
                             capture_width,
                             capture_height,
+                            &mut metrics,
                         )?;
                         frame_controller.set_send(now, send_conn_ids);
                         send_counter += 1;
@@ -1245,6 +1256,7 @@ fn handle_one_frame(
     first_frame: &mut bool,
     width: usize,
     height: usize,
+    metrics: &mut Option<super::video_metrics::VideoMetrics>,
 ) -> ResultType<HashSet<i32>> {
     sp.snapshot(|sps| {
         // so that new sub and old sub share the same encoder after switch
@@ -1258,7 +1270,10 @@ fn handle_one_frame(
     let mut send_conn_ids: HashSet<i32> = Default::default();
     let first = *first_frame;
     *first_frame = false;
-    match encoder.encode_to_message(frame, ms) {
+    let encode_start = super::video_metrics::VideoMetrics::begin(metrics);
+    let encoded = encoder.encode_to_message(frame, ms);
+    super::video_metrics::VideoMetrics::end(metrics, 2, encode_start);
+    match encoded {
         Ok(mut vf) => {
             *encode_fail_counter = 0;
             vf.display = display as _;
@@ -1269,7 +1284,9 @@ fn handle_one_frame(
                 .unwrap()
                 .as_mut()
                 .map(|r| r.write_message(&msg, width, height));
+            let enqueue_start = super::video_metrics::VideoMetrics::begin(metrics);
             send_conn_ids = sp.send_video_frame(msg);
+            super::video_metrics::VideoMetrics::end(metrics, 3, enqueue_start);
         }
         Err(e) => {
             *encode_fail_counter += 1;

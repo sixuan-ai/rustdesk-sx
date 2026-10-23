@@ -99,6 +99,7 @@ mod audio_playback_recovery;
 #[cfg(all(test, not(target_os = "linux")))]
 #[path = "client/tests/audio_state_tests.rs"]
 mod audio_state_tests;
+pub mod display_metrics;
 pub mod file_trait;
 pub mod helper;
 pub mod io_loop;
@@ -3986,7 +3987,7 @@ impl LoginConfigHandler {
 /// Media data.
 pub enum MediaData {
     VideoQueue,
-    VideoFrame(Box<VideoFrame>),
+    VideoFrame(Box<display_metrics::QueuedVideoFrame>),
     AudioFrame(Box<AudioFrame>),
     AudioFormat(AudioFormat),
     Reset,
@@ -4004,10 +4005,11 @@ pub fn start_video_thread<F, T>(
     session: Session<T>,
     display: usize,
     video_receiver: mpsc::Receiver<MediaData>,
-    video_queue: Arc<RwLock<ArrayQueue<VideoFrame>>>,
+    video_queue: Arc<RwLock<ArrayQueue<display_metrics::QueuedVideoFrame>>>,
     fps: Arc<RwLock<Option<usize>>>,
     chroma: Arc<RwLock<Option<Chroma>>>,
     discard_queue: Arc<RwLock<bool>>,
+    metrics: display_metrics::Metrics,
     video_callback: F,
 ) where
     F: 'static + FnMut(usize, &mut scrap::ImageRgb, *mut c_void, bool) + Send,
@@ -4037,6 +4039,9 @@ pub fn start_video_thread<F, T>(
                             MediaData::VideoQueue => {
                                 if let Some(vf) = video_queue.read().unwrap().pop() {
                                     if discard_queue.read().unwrap().clone() {
+                                        if let (Some(metrics), Some(at)) = (&metrics, vf.received_at) {
+                                            metrics.lock().unwrap().dequeue(at, true);
+                                        }
                                         continue;
                                     }
                                     vf
@@ -4049,6 +4054,10 @@ pub fn start_video_thread<F, T>(
                                 continue;
                             }
                         };
+                        if let (Some(metrics), Some(at)) = (&metrics, vf.received_at) {
+                            metrics.lock().unwrap().dequeue(at, false);
+                        }
+                        let vf = vf.frame;
                         let display = vf.display as usize;
                         let start = std::time::Instant::now();
                         let format = CodecFormat::from(&vf);
@@ -4068,12 +4077,25 @@ pub fn start_video_thread<F, T>(
                             let format_changed = handler.decoder.format() != format;
                             match handler.handle_frame(vf, &mut pixelbuffer, &mut tmp_chroma) {
                                 Ok(true) => {
+                                    let decode_elapsed = metrics.as_ref().map(|_| start.elapsed());
+                                    let submit_start = metrics.as_ref().map(|_| std::time::Instant::now());
                                     video_callback(
                                         display,
                                         &mut handler.rgb,
                                         handler.texture.texture,
                                         pixelbuffer,
                                     );
+
+                                    if let (Some(metrics), Some(decode), Some(submit)) =
+                                        (&metrics, decode_elapsed, submit_start)
+                                    {
+                                        metrics.lock().unwrap().submitted(
+                                            decode,
+                                            submit.elapsed(),
+                                            (handler.rgb.w, handler.rgb.h),
+                                            handler.decoder.diagnostic_name(),
+                                        );
+                                    }
 
                                     // chroma
                                     if tmp_chroma.is_some() && last_chroma != tmp_chroma {
@@ -4103,6 +4125,9 @@ pub fn start_video_thread<F, T>(
                                     // 3. If the error does not occur. Switch from A to display B. The error occurs.
                                     //
                                     // to-do: fix the error
+                                    if let Some(metrics) = &metrics {
+                                        metrics.lock().unwrap().error();
+                                    }
                                     log::error!("handle video frame error, {}", e);
                                     session.refresh_video(display as _);
                                 }

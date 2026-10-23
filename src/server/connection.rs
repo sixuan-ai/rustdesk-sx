@@ -551,6 +551,7 @@ impl Connection {
         let (tx_to_cm, rx_to_cm) = mpsc::unbounded_channel::<ipc::Data>();
         let (tx, mut rx) = mpsc::unbounded_channel::<(Instant, Arc<Message>)>();
         let (tx_video, mut rx_video) = mpsc::unbounded_channel::<(Instant, Arc<Message>)>();
+        let mut video_send_metrics = super::video_metrics::VideoSendMetrics::new();
         let (tx_input, _rx_input) = std_mpsc::channel();
         let (tx_from_authed, mut rx_from_authed) = mpsc::unbounded_channel::<ipc::Data>();
         let mut hbbs_rx = crate::hbbs_http::sync::signal_receiver();
@@ -1072,6 +1073,7 @@ impl Connection {
                     }
                 }
                 Some((instant, value)) = rx_video.recv() => {
+                    let metric_start = video_send_metrics.as_ref().map(|_| (Instant::now(), instant.elapsed(), rx_video.len()));
                     if !conn.video_ack_required {
                         if let Some(message::Union::VideoFrame(vf)) = &value.union {
                             video_service::notify_video_frame_fetched(vf.display as usize, id, Some(instant.into()));
@@ -1080,6 +1082,9 @@ impl Connection {
                     if let Err(err) = conn.stream.send(&value as &Message).await {
                         conn.on_close(&err.to_string(), false).await;
                         break;
+                    }
+                    if let (Some(metrics), Some((start, wait, depth))) = (&mut video_send_metrics, metric_start) {
+                        metrics.record(&value, wait, start.elapsed(), depth);
                     }
                 },
                 Some((instant, value)) = rx.recv() => {

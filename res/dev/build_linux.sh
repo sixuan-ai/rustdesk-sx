@@ -60,9 +60,17 @@ test -s flutter/lib/generated_bridge.dart
 # Match build.py: FRB 1.x expects DartPort's post callback as Uint8.
 sed -i 's/ffi.NativeFunction<ffi.Bool Function(DartPort/ffi.NativeFunction<ffi.Uint8 Function(DartPort/g' \
   flutter/lib/generated_bridge.dart
+features=flutter,linux-pkg-config,unix-file-copy-paste
+if [[ "${RUSTDESK_DEV_HWCODEC:-0}" == 1 ]]; then
+  pkg-config --exists libavcodec libavutil libavformat libdrm
+  hwcodec_cargo_home="$(python3 res/dev/prepare_hwcodec.py)"
+  export CARGO_HOME="$hwcodec_cargo_home"
+  export RUSTDESK_HWCODEC_SYSTEM=1
+  features+=,hwcodec
+fi
 # The Flutter runner loads the cdylib; avoid also linking unused static/rlib
 # outputs declared for other platforms in Cargo.toml.
-cargo rustc --locked --lib --features flutter,linux-pkg-config,unix-file-copy-paste \
+cargo rustc --locked --lib --features "$features" \
   --crate-type cdylib
 (cd flutter && flutter build linux --debug --no-pub)
 test -x flutter/build/linux/x64/debug/bundle/rustdesk

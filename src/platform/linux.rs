@@ -881,6 +881,7 @@ fn try_start_server_(desktop: Option<&Desktop>) -> ResultType<Option<Child>> {
     match desktop {
         Some(desktop) => {
             let mut envs = vec![];
+            crate::server::video_metrics::append_environment(&mut envs);
             if !desktop.display.is_empty() {
                 envs.push(("DISPLAY", desktop.display.clone()));
             }

@@ -1,0 +1,20 @@
+--- a/build.rs
++++ b/build.rs
+@@ -103 +103,16 @@
+-        link_vcpkg(builder, std::env::var("VCPKG_ROOT").unwrap().into());
++        println!("cargo:rerun-if-env-changed=RUSTDESK_HWCODEC_SYSTEM");
++        if std::env::var("RUSTDESK_HWCODEC_SYSTEM").as_deref() == Ok("1") {
++            assert_eq!(std::env::var("CARGO_CFG_TARGET_OS").unwrap(), "linux");
++            let flags = std::process::Command::new("pkg-config")
++                .args(["--cflags", "--libs", "libavcodec", "libavutil", "libavformat"])
++                .output().expect("pkg-config is required for system FFmpeg");
++            assert!(flags.status.success(), "system FFmpeg development packages are required");
++            for flag in std::str::from_utf8(&flags.stdout).unwrap().split_whitespace() {
++                if let Some(path) = flag.strip_prefix("-I") { builder.include(path); }
++                else if let Some(path) = flag.strip_prefix("-L") { println!("cargo:rustc-link-search=native={path}"); }
++                else if let Some(lib) = flag.strip_prefix("-l") { println!("cargo:rustc-link-lib={lib}"); }
++                else { builder.flag(flag); }
++            }
++        } else {
++            link_vcpkg(builder, std::env::var("VCPKG_ROOT").unwrap().into());
++        }
