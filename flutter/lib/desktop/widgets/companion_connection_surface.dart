@@ -18,8 +18,25 @@ class CompanionBrand extends StatelessWidget {
             child: const Icon(Icons.desktop_windows_rounded,
                 color: Colors.white, size: 21)),
         const SizedBox(width: 10),
-        const Text('RustDesk',
-            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
+        Expanded(
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              const Text('RustDesk SX',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 3),
+              Text('思玄二次开发版',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.color
+                          ?.withValues(alpha: .7))),
+            ])),
       ]));
 }
 

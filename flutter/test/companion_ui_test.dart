@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' show Tristate;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_hbb/common/companion_theme.dart';
 import 'package:flutter_hbb/desktop/widgets/companion_connection_surface.dart';
+import 'package:flutter_hbb/desktop/widgets/companion_peer_widgets.dart';
 
 void main() {
   test('Chinese is the default and explicit language choices are respected',
@@ -46,4 +48,58 @@ void main() {
       await tester.binding.setSurfaceSize(null);
     });
   }
+  testWidgets('Brand remains readable in a narrow sidebar', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: MediaQuery(
+      data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+      child: const SizedBox(width: 240, child: CompanionBrand()),
+    ))));
+    expect(find.text('RustDesk SX'), findsOneWidget);
+    expect(find.text('思玄二次开发版'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Icon-only device tabs keep their accessible selected label',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(
+            body: CompanionPeerTabLabel(
+      icon: Icons.star,
+      label: '收藏夹',
+      selected: true,
+      showLabel: false,
+      labelWidth: 112,
+      color: Colors.purple,
+    ))));
+    expect(find.bySemanticsLabel('收藏夹'), findsOneWidget);
+    expect(find.text('收藏夹'), findsNothing);
+    expect(
+        tester
+            .getSemantics(find.byType(CompanionPeerTabLabel))
+            .getSemanticsData()
+            .flagsCollection
+            .isSelected,
+        Tristate.isTrue);
+    semantics.dispose();
+  });
+
+  testWidgets('Empty device guidance scrolls in a short large-text window',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(280, 160));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: MediaQuery(
+      data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+      child: const CompanionPeerEmptyState(
+          icon: Icons.star, title: '收藏夹', message: '收藏常用设备后，可在这里快速连接。'),
+    ))));
+    await tester.drag(
+        find.byType(SingleChildScrollView), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(find.text('收藏常用设备后，可在这里快速连接。').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -70,3 +70,50 @@ flutter test --no-pub --concurrency 2 test/companion_ui_test.dart test/quality_m
 - 回滚代码可对本 UI 提交执行 `git revert`（先保留后续工作），再执行构建和启动脚本。系统 RustDesk 未被替换，OMEN 软件和配置未被部署修改。
 
 最终 Debug UI kernel SHA-256：`9f1afe8ed141ca80d6a53f05dd17a62a0bb95b7a7b03a0dbbb2b59946083a504`。
+
+## 连接首页与设备列表细化（2026-10-23）
+
+在 `codex/stable-1.5.0-dev` 上继续完善首页。保留 AAA 参考的粉紫、薄荷配色和 MiSans，集中解决连接面板在宽窗口过度拉伸、设备分类只有图标、空列表缺少层级和更多菜单点击范围过小的问题。
+
+- 连接面板左对齐，最大宽度 980；输入框增加设备图标和实色底，连接按钮填满可用宽度。
+- 更多菜单保留原有操作，点击区域扩展到整个 44×44 控件，并补充提示。
+- 品牌显示 `RustDesk SX` 和“思玄二次开发版”。
+- 桌面设备分类根据剩余宽度显示全部标签、当前标签或纯图标；图标模式仍提供名称与选中状态的无障碍语义。工具条随文字缩放增加高度。
+- 桌面空列表使用对应分类图标、标题和原有本地化提示；短窗口可滚动。
+
+### 回归面与最小化检查
+
+逐项检查最终差异，既有文件的变化仅涉及：
+
+| 文件 | 既有路径变化与原因 |
+| --- | --- |
+| `flutter/lib/desktop/pages/connection_page.dart` | 桌面首页的连接面板尺寸、输入框外观、主按钮尺寸及更多按钮点击范围；原有输入控制器、自动补全、认证和各连接回调保留。 |
+| `flutter/lib/desktop/widgets/companion_connection_surface.dart` | 侧栏品牌文字及其可收缩布局；原有绘图保留。 |
+| `flutter/lib/common/widgets/peer_tab_page.dart` | 分类条增加宽度测量和桌面标签，桌面高度适配文字缩放；标签组件位于新增的桌面 widgets 文件。移动端和 Web 保留原图标和 32 高度，重排、固定选项、分类切换和持久化回调保留。 |
+| `flutter/lib/common/widgets/peers_view.dart` | 仅桌面空数据分支接入新组件；非空设备列表、过滤和缓存，以及移动端/Web 空状态保留。 |
+| `flutter/test/companion_ui_test.dart` | 新增品牌窄侧栏、图标分类语义、短窗口大字号空状态共 3 项回归。 |
+
+新文件 `flutter/lib/desktop/widgets/companion_peer_widgets.dart` 只负责表现，不加载设备、不保存状态、不引入依赖。共享文件因嵌套布局产生的缩进变化已经检查，没有顺带修改其他逻辑。Flutter 自动生成的 `analysis_options.yaml` 排除项不纳入提交。
+
+### 验证
+
+在本机 Linux，使用 `/home/x/flutter/bin/flutter`：
+
+```bash
+# 从 flutter/ 执行
+flutter test test/companion_ui_test.dart --concurrency=2
+flutter test --concurrency=2
+flutter analyze --no-pub lib/desktop/widgets/companion_peer_widgets.dart lib/desktop/widgets/companion_connection_surface.dart lib/desktop/pages/connection_page.dart lib/common/widgets/peer_tab_page.dart lib/common/widgets/peers_view.dart test/companion_ui_test.dart
+PATH="$HOME/.local/share/rustdesk-dev/build-tools:$PATH" RUSTDESK_BUILD_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2 flutter build linux --debug --no-pub
+```
+
+- 定向测试 6 项、全套测试 141 项通过。浅/深色连接表单覆盖 320、520、900 宽度；新增品牌与空状态覆盖 1.5 倍文字缩放、240 宽侧栏和 280×160 短窗口。测试中的表单是组件组合，不代表完整首页的小窗口实机验证。
+- 定向分析无 error/warning，8 个 info 均为原有 API 的废弃提示。`file_picker` 插件元数据提示仍存在，未在本轮处理。
+- Linux Debug 构建通过。通过 `flutter attach` 热更新现有本机客户端，实际渲染截图确认深色大窗口的品牌、连接面板、分类标签和收藏空状态。未重启 OMEN 服务，未重新验证远端画面、键鼠或网络性能。
+- 运行截图包含设备标识，留在本机私有缓存，未加入仓库。
+
+### 剩余范围与回滚
+
+本轮未改造非空设备卡片、设置页或远控工具条；完整首页在小窗口、浅色以及 Windows/macOS 上的人工交互仍待后续核对。移动端/Web 未执行构建验证。
+
+仅修改源码和本机 Debug 构建产物；未修改服务、账号或持久配置。回滚时撤销本节对应的 UI 提交并重新执行上述 Debug 构建，再重新启动本机开发客户端。改动保留在当前开发分支，本轮未推送远端。

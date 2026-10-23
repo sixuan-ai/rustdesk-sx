@@ -23,6 +23,7 @@ import 'package:provider/provider.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 
 import '../../common.dart';
+import '../../desktop/widgets/companion_peer_widgets.dart';
 import '../../models/platform_model.dart';
 
 class PeerTabPage extends StatefulWidget {
@@ -110,7 +111,11 @@ class _PeerTabPageState extends State<PeerTabPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Obx(() => SizedBox(
-              height: 32,
+              height: isDesktop
+                  ? 40 +
+                      (MediaQuery.textScalerOf(context).scale(14) - 14)
+                          .clamp(0, double.infinity)
+                  : 32,
               child: Container(
                 padding: stateGlobal.isPortrait.isTrue
                     ? EdgeInsets.symmetric(horizontal: 2)
@@ -136,53 +141,71 @@ class _PeerTabPageState extends State<PeerTabPage>
 
   Widget _createSwitchBar(BuildContext context) {
     final model = Provider.of<PeerTabModel>(context);
-    var counter = -1;
-    return ReorderableListView(
-        buildDefaultDragHandles: false,
-        onReorder: model.reorder,
-        scrollDirection: Axis.horizontal,
-        physics: NeverScrollableScrollPhysics(),
-        children: model.visibleEnabledOrderedIndexs.map((t) {
-          final selected = model.currentTab == t;
-          final color = selected
-              ? MyTheme.tabbar(context).selectedTextColor
-              : MyTheme.tabbar(context).unSelectedTextColor
-            ?..withOpacity(0.5);
-          final hover = false.obs;
-          final deco = BoxDecoration(
-              color: Theme.of(context).colorScheme.background,
-              borderRadius: BorderRadius.circular(6));
-          final decoBorder = BoxDecoration(
-              border: Border(
-            bottom: BorderSide(width: 2, color: color!),
-          ));
-          counter += 1;
-          return ReorderableDragStartListener(
-              key: ValueKey(t),
-              index: counter,
-              child: Obx(() => Tooltip(
-                    preferBelow: false,
-                    message: model.tabTooltip(t),
-                    onTriggered: isMobile ? mobileShowTabVisibilityMenu : null,
-                    child: InkWell(
-                      child: Container(
-                        decoration: (hover.value
-                            ? (selected ? decoBorder : deco)
-                            : (selected ? decoBorder : null)),
-                        child: Icon(model.tabIcon(t), color: color)
-                            .paddingSymmetric(horizontal: 4),
-                      ).paddingSymmetric(horizontal: 4),
-                      onTap: isOptionFixed(kOptionPeerTabIndex)
-                          ? null
-                          : () async {
-                              await handleTabSelection(t);
-                              await bind.setLocalFlutterOption(
-                                  k: kOptionPeerTabIndex, v: t.toString());
-                            },
-                      onHover: (value) => hover.value = value,
-                    ),
-                  )));
-        }).toList());
+    return LayoutBuilder(builder: (context, constraints) {
+      var counter = -1;
+      final count = model.visibleEnabledOrderedIndexs.length;
+      final labelWidth = 112 * MediaQuery.textScalerOf(context).scale(13) / 13;
+      final showAllLabels =
+          constraints.maxWidth >= count * (36 + 6 + labelWidth);
+      final showSelectedLabel =
+          constraints.maxWidth >= count * 36 + 6 + labelWidth;
+      return ReorderableListView(
+          buildDefaultDragHandles: false,
+          onReorder: model.reorder,
+          scrollDirection: Axis.horizontal,
+          physics: NeverScrollableScrollPhysics(),
+          children: model.visibleEnabledOrderedIndexs.map((t) {
+            final selected = model.currentTab == t;
+            final color = selected
+                ? MyTheme.tabbar(context).selectedTextColor
+                : MyTheme.tabbar(context).unSelectedTextColor
+              ?..withOpacity(0.5);
+            final hover = false.obs;
+            final deco = BoxDecoration(
+                color: Theme.of(context).colorScheme.background,
+                borderRadius: BorderRadius.circular(6));
+            final decoBorder = BoxDecoration(
+                border: Border(
+              bottom: BorderSide(width: 2, color: color!),
+            ));
+            counter += 1;
+            return ReorderableDragStartListener(
+                key: ValueKey(t),
+                index: counter,
+                child: Obx(() => Tooltip(
+                      preferBelow: false,
+                      message: model.tabTooltip(t),
+                      onTriggered:
+                          isMobile ? mobileShowTabVisibilityMenu : null,
+                      child: InkWell(
+                        child: Container(
+                          decoration: (hover.value
+                              ? (selected ? decoBorder : deco)
+                              : (selected ? decoBorder : null)),
+                          child: isDesktop
+                              ? CompanionPeerTabLabel(
+                                  icon: model.tabIcon(t),
+                                  label: model.tabTooltip(t),
+                                  selected: selected,
+                                  showLabel: showAllLabels ||
+                                      (selected && showSelectedLabel),
+                                  labelWidth: labelWidth,
+                                  color: color)
+                              : Icon(model.tabIcon(t), color: color)
+                                  .paddingSymmetric(horizontal: 4),
+                        ).paddingSymmetric(horizontal: 4),
+                        onTap: isOptionFixed(kOptionPeerTabIndex)
+                            ? null
+                            : () async {
+                                await handleTabSelection(t);
+                                await bind.setLocalFlutterOption(
+                                    k: kOptionPeerTabIndex, v: t.toString());
+                              },
+                        onHover: (value) => hover.value = value,
+                      ),
+                    )));
+          }).toList());
+    });
   }
 
   Widget _createPeersView() {
