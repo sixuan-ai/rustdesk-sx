@@ -4,6 +4,12 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 dev_root="${RUSTDESK_DEV_ROOT:-$HOME/.local/share/rustdesk-dev}"
 jobs="${RUSTDESK_BUILD_JOBS:-2}"
+mode="${RUSTDESK_DEV_BUILD_MODE:-debug}"
+case "$mode" in
+  debug) cargo_mode=() ;;
+  release) cargo_mode=(--release) ;;
+  *) echo 'RUSTDESK_DEV_BUILD_MODE must be debug or release' >&2; exit 1 ;;
+esac
 [[ "$jobs" =~ ^[1-6]$ ]] || { echo 'RUSTDESK_BUILD_JOBS must be 1..6' >&2; exit 1; }
 mkdir -p "$dev_root/pkgconfig" "$dev_root/build-tools"
 
@@ -70,8 +76,8 @@ if [[ "${RUSTDESK_DEV_HWCODEC:-0}" == 1 ]]; then
 fi
 # The Flutter runner loads the cdylib; avoid also linking unused static/rlib
 # outputs declared for other platforms in Cargo.toml.
-cargo rustc --locked --lib --features "$features" \
+cargo rustc --locked "${cargo_mode[@]}" --lib --features "$features" \
   --crate-type cdylib
-(cd flutter && flutter build linux --debug --no-pub)
-test -x flutter/build/linux/x64/debug/bundle/rustdesk
-echo "Bundle: $PWD/flutter/build/linux/x64/debug/bundle/rustdesk"
+(cd flutter && flutter build linux --"$mode" --no-pub)
+test -x "flutter/build/linux/x64/$mode/bundle/rustdesk"
+echo "Bundle: $PWD/flutter/build/linux/x64/$mode/bundle/rustdesk"

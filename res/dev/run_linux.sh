@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
-bundle="$PWD/flutter/build/linux/x64/debug/bundle/rustdesk"
+mode="${RUSTDESK_DEV_BUILD_MODE:-debug}"
+case "$mode" in
+  debug|release) ;;
+  *) echo 'RUSTDESK_DEV_BUILD_MODE must be debug or release' >&2; exit 1 ;;
+esac
+bundle="$PWD/flutter/build/linux/x64/$mode/bundle/rustdesk"
 [[ -x "$bundle" ]] || { echo 'Run res/dev/build_linux.sh first' >&2; exit 1; }
 
 # Prefer the native session backend. An explicit override remains useful for

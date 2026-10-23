@@ -304,6 +304,15 @@ impl PipeWireRecorder {
         let sink = gst_element("appsink")?;
         sink.set_property("drop", &true)?;
         sink.set_property("max-buffers", &1u32)?;
+        if std::env::var("RUSTDESK_PIPEWIRE_UNPACED").as_deref() == Ok("1") {
+            // Screen capture is consumed at the video service's cadence; this
+            // experiment removes the sink clock wait while retaining one latest buffer.
+            sink.set_property("sync", &false)?;
+            if sink.find_property("processing-deadline").is_some() {
+                sink.set_property("processing-deadline", &0u64)?;
+            }
+            hbb_common::log::info!("PipeWire unpaced appsink enabled");
+        }
 
         pipeline.add_many(&[&src, &convert, &sink])?;
         src.link(&convert)?;

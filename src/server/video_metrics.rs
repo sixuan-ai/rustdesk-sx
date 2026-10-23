@@ -126,7 +126,11 @@ pub fn append_environment(envs: &mut Vec<(&'static str, String)>) {
             envs.push(("RUSTDESK_PIPEWIRE_REUSE_BUFFER", value));
         }
     }
-    for key in ["RUSTDESK_PARALLEL_NV12", "RUSTDESK_NVENC_LOW_LATENCY"] {
+    for key in [
+        "RUSTDESK_PARALLEL_NV12",
+        "RUSTDESK_NVENC_LOW_LATENCY",
+        "RUSTDESK_PIPEWIRE_UNPACED",
+    ] {
         if std::env::var(key).as_deref() == Ok("1") {
             envs.push((key, "1".into()));
         }

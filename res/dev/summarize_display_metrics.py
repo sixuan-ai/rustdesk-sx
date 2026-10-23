@@ -2,16 +2,38 @@
 """Summarize only sanitized display telemetry from a RustDesk log (no VM URLs)."""
 import argparse
 from collections import defaultdict
+from datetime import datetime
 import json
+import re
 import statistics
+
+def timestamp(value):
+    try:
+        result = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+    if result.tzinfo is None:
+        raise argparse.ArgumentTypeError('Timestamp requires a timezone')
+    return result
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('log')
 parser.add_argument('--skip-windows', type=int, default=0)
+parser.add_argument('--since', type=timestamp, help='Inclusive ISO timestamp with timezone')
+parser.add_argument('--until', type=timestamp, help='Inclusive ISO timestamp with timezone')
 args = parser.parse_args()
+if args.since and args.until and args.since > args.until:
+    parser.error('--until must not precede --since')
 windows = defaultdict(list)
 with open(args.log, errors='replace') as stream:
     for line in stream:
+        if args.since or args.until:
+            match = re.search(r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d(?:\.\d+)?(?:Z| ?[+-]\d\d:\d\d)', line)
+            if not match:
+                continue
+            at = timestamp(match[0].replace(' +', '+').replace(' -', '-'))
+            if (args.since and at < args.since) or (args.until and at > args.until):
+                continue
         for marker in ('pipewire_capture_metrics ', 'pipewire_source_metrics ', 'server_display_metrics ', 'server_video_queue_metrics ', 'display_metrics '):
             if marker in line:
                 try:
