@@ -1,3 +1,28 @@
+# RustDesk · 思玄二次开发版
+
+**仓库：[`rustdesk-sx`](https://github.com/zhaojiaxiang370711/rustdesk-sx) · 二次开发维护：转瞬之澜（思玄）**
+
+基于 [RustDesk](https://github.com/rustdesk/rustdesk) 1.5.0 的独立维护版本，保留上游来源、作者声明和 AGPL-3.0 许可证。
+
+本分支重点：
+
+- MiSans 字体、默认简体中文与桌面 UI 调整。
+- Linux 原生 Wayland 客户端、文本剪贴板及中文输入辅助。
+- Tailscale IP 直连验证、逐屏采集／编解码／队列监测。
+- Linux 多屏解码器资源管理，以及当前稳定 Rust／Flutter 工具链的 Debug／Release 构建。
+
+**验证状态（2026-10-23）：** Linux Debug／Release 的 4K H.265 硬件链路已实测；持续 4K60 仍在优化，尚未达标。不要把硬件编解码连通等同于稳定 60 FPS。
+
+[二次开发说明](FORK.md) · [代码许可证](LICENCE) · [Linux 构建记录](docs/development-linux-latest-stable-2026-10-23.md) · [最新性能验证](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)
+
+MiSans 字体保留小米及原字体作者的版权，适用其[独立许可](flutter/assets/fonts/misans/README.md)；其他第三方组件按各自许可提供。
+
+---
+
+## 上游项目说明
+
+以下保留 RustDesk 上游 README；其中官方服务、下载和社区链接指向上游项目。本二次开发版本的构建方式与验证范围以上述说明为准。
+
 <p align="center">
   <img src="res/logo-header.svg" alt="RustDesk - Your remote desktop"><br>
   <a href="#raw-steps-to-build">Build</a> •
