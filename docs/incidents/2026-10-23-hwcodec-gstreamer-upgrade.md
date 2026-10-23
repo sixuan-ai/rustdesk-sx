@@ -157,3 +157,13 @@ without DISPLAY or metrics and received a remote texture event. No system
 display, GPU, network or unrelated service configuration changed. Source rollback
 is git revert of this upgrade commit followed by rebuilding; the preserved
 baseline bundle can be selected with RUSTDESK_DEV_BUNDLE_DIR for diagnostics.
+
+## Follow-up: endpoint / network isolation
+
+The [subsequent controlled endpoint matrix](2026-10-23-gstreamer-endpoint-network-isolation.md)
+held hwcodec0.8 fixed and swapped capture bindings at the client/server
+independently, with verified foreground state. Independent TCP tests reproduced
+network variation/retransmissions, and the complete upgrade was no longer the
+slower case. A consistent GStreamer capture regression was not reproduced;
+network is not proven to explain every timing difference. The upgrade stays
+on the development branch; 4K60 and a stable performance improvement remain open.
