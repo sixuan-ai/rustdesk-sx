@@ -13,6 +13,9 @@ use hbb_common::{bail, log, ResultType};
 
 generate_call_macro!(call_yuv, false);
 
+#[cfg(target_os = "linux")]
+mod parallel_nv12;
+
 #[cfg(not(target_os = "ios"))]
 pub fn convert_to_yuv(
     captured: &PixelBuffer,
@@ -123,6 +126,15 @@ pub fn convert_to_yuv(
                 crate::Pixfmt::RGB565LE => ARGBToNV12,
                 _ => bail!(unsupported),
             };
+            #[cfg(target_os = "linux")]
+            if src_width >= 2560 && src_height >= 1440
+                && matches!(src_pixfmt, crate::Pixfmt::BGRA | crate::Pixfmt::RGBA)
+                && std::env::var("RUSTDESK_PARALLEL_NV12").as_deref() == Ok("1")
+                && parallel_nv12::convert(src, src_stride[0], src_width, src_height,
+                    src_pixfmt == crate::Pixfmt::RGBA, dst, dst_stride_y, dst_stride_uv, dst_fmt.u)?
+            {
+                return Ok(());
+            }
             call_yuv!(f(
                 input,
                 input_stride as _,

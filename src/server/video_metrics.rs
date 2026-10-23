@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 pub struct VideoMetrics {
     start: Instant,
-    stages: [Vec<f64>; 4],
+    stages: [Vec<f64>; 6],
 }
 
 impl VideoMetrics {
@@ -60,7 +60,8 @@ impl VideoMetrics {
             json!({"display": display,
             "width": dimensions.0, "height": dimensions.1, "hardware_encoder": hardware, "target_fps": target_fps,
             "window_ms": elapsed.as_secs_f64() * 1000., "capture_call_ms": stages[0],
-            "pixel_convert_ms": stages[1], "encode_ms": stages[2], "enqueue_ms": stages[3]})
+            "pixel_convert_ms": stages[1], "encode_ms": stages[2], "enqueue_ms": stages[3],
+            "frame_ack_wait_ms": stages[4], "pacing_sleep_ms": stages[5]})
         );
         self.start = Instant::now();
     }
@@ -123,6 +124,11 @@ pub fn append_environment(envs: &mut Vec<(&'static str, String)>) {
     if let Ok(value) = std::env::var("RUSTDESK_PIPEWIRE_REUSE_BUFFER") {
         if value == "0" || value == "1" {
             envs.push(("RUSTDESK_PIPEWIRE_REUSE_BUFFER", value));
+        }
+    }
+    for key in ["RUSTDESK_PARALLEL_NV12", "RUSTDESK_NVENC_LOW_LATENCY"] {
+        if std::env::var(key).as_deref() == Ok("1") {
+            envs.push((key, "1".into()));
         }
     }
     if std::env::var("RUSTDESK_DISPLAY_METRICS").as_deref() == Ok("1") {

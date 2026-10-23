@@ -14,7 +14,8 @@ commit = source.split('#')[1]
 original = Path(os.environ.get('CARGO_HOME', Path.home() / '.cargo')).resolve()
 patch = repo / 'res/dev/patches/hwcodec-system-ffmpeg.patch'
 identity = hashlib.sha256(patch.read_bytes() + commit.encode()).hexdigest()[:12]
-patches = [patch, repo / 'res/dev/patches/hwcodec-ffmpeg8-api.patch']
+patches = [patch, repo / 'res/dev/patches/hwcodec-ffmpeg8-api.patch',
+           repo / 'res/dev/patches/hwcodec-nvenc-low-latency.patch']
 patch_identity = hashlib.sha256(b''.join(p.read_bytes() for p in patches)).hexdigest()
 dev = Path(os.environ.get('RUSTDESK_DEV_ROOT', Path.home() / '.local/share/rustdesk-dev'))
 target = dev / ('cargo-hwcodec-' + identity)
@@ -54,4 +55,13 @@ for origin in (original / 'git/checkouts').iterdir():
             marker.write_text(patch_identity + '\n')
 if not found:
     raise SystemExit('Run cargo fetch --locked before preparing hwcodec')
+# Cargo treats a pinned git revision as immutable, so replacing C++ sources in
+# this overlay alone does not invalidate a previously compiled build script.
+stamp = repo / 'target/.rustdesk-hwcodec-patch'
+if not stamp.exists() or stamp.read_text().strip() != patch_identity:
+    environment = dict(os.environ, CARGO_HOME=str(target))
+    subprocess.run(['cargo', 'clean', '--package', 'hwcodec'], cwd=repo,
+                   env=environment, check=True, stdout=subprocess.DEVNULL)
+    stamp.parent.mkdir(parents=True, exist_ok=True)
+    stamp.write_text(patch_identity + '\n')
 print(target)

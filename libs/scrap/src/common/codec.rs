@@ -623,6 +623,12 @@ impl Decoder {
         self.format
     }
 
+    #[cfg(all(target_os = "linux", feature = "hwcodec"))]
+    pub fn release_hw_decoders(&mut self) {
+        self.h264_ram = None;
+        self.h265_ram = None;
+    }
+
     /// The selected implementation, rather than the negotiated codec alone.
     pub fn diagnostic_name(&self) -> String {
         #[cfg(feature = "hwcodec")]

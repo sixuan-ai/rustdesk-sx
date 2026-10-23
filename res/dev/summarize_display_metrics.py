@@ -36,7 +36,7 @@ for (stage, display), samples in sorted(windows.items()):
             if key in ('received_fps', 'submitted_fps'):
                 mean = sum(s[key] * s['window_ms'] for s in samples) / sum(s['window_ms'] for s in samples)
             result[key] = {'mean': round(mean, 2), 'max': max(values)}
-    for key in ('queue_wait_ms', 'decode_convert_ms', 'flutter_submit_ms', 'capture_call_ms', 'pixel_convert_ms', 'encode_ms', 'enqueue_ms', 'pull_wait_ms', 'map_ms', 'compare_copy_ms', 'crop_copy_ms', 'arrival_interval_ms', 'pts_interval_ms'):
+    for key in ('queue_wait_ms', 'decode_convert_ms', 'flutter_submit_ms', 'capture_call_ms', 'pixel_convert_ms', 'encode_ms', 'enqueue_ms', 'pull_wait_ms', 'map_ms', 'compare_copy_ms', 'crop_copy_ms', 'arrival_interval_ms', 'pts_interval_ms', 'frame_ack_wait_ms', 'pacing_sleep_ms'):
         values = [s[key]['p95'] for s in samples if s.get(key, {}).get('samples', 0)]
         if values:
             # Do not mislabel a percentile of window percentiles as a frame percentile.

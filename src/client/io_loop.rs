@@ -98,6 +98,8 @@ pub struct Remote<T: InvokeUiSession> {
     elevation_requested: bool,
     peer_info: ParsedPeerInfo,
     video_threads: HashMap<usize, VideoThread>,
+    #[cfg(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))]
+    video_selection: client::linux_video_resources::VideoSelection,
     chroma: Arc<RwLock<Option<Chroma>>>,
     last_record_state: bool,
     sent_close_reason: bool,
@@ -150,6 +152,8 @@ impl<T: InvokeUiSession> Remote<T> {
             elevation_requested: false,
             peer_info: Default::default(),
             video_threads: Default::default(),
+            #[cfg(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))]
+            video_selection: Default::default(),
             chroma: Default::default(),
             last_record_state: false,
             sent_close_reason: false,
@@ -793,6 +797,10 @@ impl<T: InvokeUiSession> Remote<T> {
                         self.initial_clipboard_pending = false;
                     }
                     Some(message::Union::Misc(misc)) => match misc.union {
+                        #[cfg(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))]
+                        Some(misc::Union::CaptureDisplays(ref request)) => {
+                            self.release_unused_video_threads(request);
+                        }
                         Some(misc::Union::RefreshVideo(_)) => {
                             self.video_threads.iter().for_each(|(_, v)| {
                                 *v.discard_queue.write().unwrap() = true;
@@ -1541,12 +1549,18 @@ impl<T: InvokeUiSession> Remote<T> {
                         self.send_toggle_virtual_display_msg(peer).await;
                         self.send_toggle_privacy_mode_msg(peer).await;
                     }
-                    self.video_format = CodecFormat::from(&vf);
-
+                    #[cfg(not(all(target_os = "linux", feature = "flutter", feature = "hwcodec")))]
+                    { self.video_format = CodecFormat::from(&vf); }
                     let display = vf.display as usize;
+                    #[cfg(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))]
+                    if !self.video_selection.accepts(display) {
+                        return true;
+                    }
                     if !self.video_threads.contains_key(&display) {
                         self.new_video_thread(display);
                     }
+                    #[cfg(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))]
+                    { self.video_format = CodecFormat::from(&vf); }
                     let Some(thread) = self.video_threads.get_mut(&display) else {
                         return true;
                     };
@@ -2663,6 +2677,19 @@ impl<T: InvokeUiSession> Remote<T> {
         }
     }
 
+    #[cfg(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))]
+    fn release_unused_video_threads(&mut self, request: &CaptureDisplays) {
+        if self.handler.is_view_camera() {
+            return;
+        }
+        let count = self.handler.lc.read().unwrap().peer_info.as_ref()
+            .map_or(0, |info| info.displays.len());
+        if self.video_selection.update(request, count) {
+            let selected = &self.video_selection;
+            self.video_threads.retain(|display, _| selected.accepts(*display));
+        }
+    }
+
     fn new_video_thread(&mut self, display: usize) {
         let video_queue = Arc::new(RwLock::new(ArrayQueue::new(client::VIDEO_QUEUE_SIZE)));
         let (video_sender, video_receiver) = std::sync::mpsc::channel::<MediaData>();
@@ -2703,7 +2730,12 @@ impl<T: InvokeUiSession> Remote<T> {
             },
         );
         self.video_threads.insert(display, video_thread);
-        if self.video_threads.len() == 1 {
+        // Retiring an inactive display can leave only one replacement thread;
+        // initialize recording only on the session's first video format.
+        if self.video_threads.len() == 1
+            && (!cfg!(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))
+                || self.video_format == CodecFormat::Unknown)
+        {
             let auto_record = LocalConfig::get_bool_option(keys::OPTION_ALLOW_AUTO_RECORD_OUTGOING);
             self.handler.lc.write().unwrap().record_state = auto_record;
             self.update_record_state();

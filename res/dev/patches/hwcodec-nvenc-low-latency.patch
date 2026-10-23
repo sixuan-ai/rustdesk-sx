@@ -1,0 +1,24 @@
+--- a/cpp/ffmpeg_ram/ffmpeg_ram_encode.cpp
++++ b/cpp/ffmpeg_ram/ffmpeg_ram_encode.cpp
+@@ -236,6 +236,21 @@
+       return false;
+     }
+     // util_encode::set_quality(c_->priv_data, name_, quality_);
++#ifdef __linux__
++    const char *low_latency = getenv("RUSTDESK_NVENC_LOW_LATENCY");
++    if (name_.find("nvenc") != std::string::npos && low_latency &&
++        strcmp(low_latency, "1") == 0) {
++      // Keep the upstream profile unless the controlled low-latency path is requested.
++      if (av_opt_set(c_->priv_data, "preset", "p1", 0) < 0 ||
++          av_opt_set(c_->priv_data, "tune", "ull", 0) < 0 ||
++          av_opt_set(c_->priv_data, "rc-lookahead", "0", 0) < 0 ||
++          av_opt_set(c_->priv_data, "zerolatency", "1", 0) < 0) {
++        LOG_ERROR(std::string("NVENC low-latency configuration failed"));
++        return false;
++      }
++      LOG_INFO(std::string("NVENC low-latency profile: p1/ull/lookahead=0"));
++    }
++#endif
+     util_encode::set_rate_control(c_, name_, rc_, q_);
+     util_encode::set_gpu(c_->priv_data, name_, gpu_);
+     util_encode::force_hw(c_->priv_data, name_);

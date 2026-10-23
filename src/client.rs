@@ -100,6 +100,8 @@ mod audio_playback_recovery;
 #[path = "client/tests/audio_state_tests.rs"]
 mod audio_state_tests;
 pub mod display_metrics;
+#[cfg(all(target_os = "linux", feature = "flutter", feature = "hwcodec"))]
+mod linux_video_resources;
 pub mod file_trait;
 pub mod helper;
 pub mod io_loop;
@@ -2768,6 +2770,9 @@ impl VideoHandler {
         self.rgb.set_align(crate::get_dst_align_rgba());
         let luid = Self::get_adapter_luid();
         let format = format.unwrap_or(self.decoder.format());
+        // Creating the replacement first temporarily doubles CUDA context/surface memory.
+        #[cfg(all(target_os = "linux", feature = "hwcodec"))]
+        self.decoder.release_hw_decoders();
         self.decoder = Decoder::new(format, luid);
         self.fail_counter = 0;
         self.first_frame = true;

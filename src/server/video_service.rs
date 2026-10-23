@@ -983,6 +983,7 @@ fn run(vs: VideoService) -> ResultType<()> {
             }
         }
 
+        let frame_wait_start = super::video_metrics::VideoMetrics::begin(&metrics);
         let mut fetched_conn_ids = HashSet::new();
         let timeout_millis = 3_000u64;
         let wait_begin = Instant::now();
@@ -997,12 +998,15 @@ fn run(vs: VideoService) -> ResultType<()> {
             }
         }
         DISPLAY_CONN_IDS.lock().unwrap().remove(&display_idx);
+        super::video_metrics::VideoMetrics::end(&mut metrics, 4, frame_wait_start);
 
         let elapsed = now.elapsed();
         // may need to enable frame(timeout)
         log::trace!("{:?} {:?}", time::Instant::now(), elapsed);
         if elapsed < spf {
+            let sleep_start = super::video_metrics::VideoMetrics::begin(&metrics);
             std::thread::sleep(spf - elapsed);
+            super::video_metrics::VideoMetrics::end(&mut metrics, 5, sleep_start);
         }
     }
 
