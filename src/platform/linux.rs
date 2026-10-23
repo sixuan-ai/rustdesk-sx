@@ -36,6 +36,7 @@ use terminfo::{capability as cap, Database};
 use wallpaper;
 
 pub const PA_SAMPLE_RATE: u32 = 48000;
+pub mod wayland_clipboard;
 static mut UNMODIFIED: bool = true;
 
 #[derive(Clone, Debug)]

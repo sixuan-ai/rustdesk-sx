@@ -24,6 +24,8 @@ parser.add_argument('--title', required=True)
 parser.add_argument('--x', type=float, required=True, help='window-local logical x')
 parser.add_argument('--y', type=float, required=True, help='window-local logical y')
 parser.add_argument('--click', action='store_true')
+parser.add_argument('--require-active', action='store_true',
+                    help='abort instead of sending focus-switch shortcuts')
 args = parser.parse_args()
 env = os.environ.copy()
 env.setdefault('YDOTOOL_SOCKET', f'/run/user/{os.getuid()}/.ydotool_socket')
@@ -52,6 +54,8 @@ def active():
     return target().get_state_set().contains(Atspi.StateType.ACTIVE)
 
 
+if args.require_active and not active():
+    raise SystemExit('Requested client is not active; no focus shortcuts sent')
 for _ in range(12):
     if active():
         break

@@ -26,7 +26,7 @@ pub fn is_sync_clipboard_between_sessions_enabled() -> bool {
 }
 
 // This format is used to store the flag in the clipboard.
-const RUSTDESK_CLIPBOARD_OWNER_FORMAT: &'static str = "dyn.com.rustdesk.owner";
+pub(crate) const RUSTDESK_CLIPBOARD_OWNER_FORMAT: &'static str = "dyn.com.rustdesk.owner";
 
 // Add special format for Excel XML Spreadsheet
 const CLIPBOARD_FORMAT_EXCEL_XML_SPREADSHEET: &'static str = "XML Spreadsheet";
@@ -311,13 +311,17 @@ pub fn update_clipboard(multi_clipboards: Vec<Clipboard>, side: ClipboardSide) {
 
 #[cfg(not(target_os = "android"))]
 pub struct ClipboardContext {
-    inner: arboard::Clipboard,
+    inner: Option<arboard::Clipboard>,
 }
 
 #[cfg(not(target_os = "android"))]
 #[allow(unreachable_code)]
 impl ClipboardContext {
     pub fn new() -> ResultType<ClipboardContext> {
+        #[cfg(target_os = "linux")]
+        if crate::platform::linux::wayland_clipboard::enabled() {
+            return Ok(ClipboardContext { inner: None });
+        }
         let board;
         #[cfg(not(target_os = "linux"))]
         {
@@ -347,10 +351,19 @@ impl ClipboardContext {
             }
         }
 
-        Ok(ClipboardContext { inner: board })
+        Ok(ClipboardContext {
+            inner: Some(board),
+        })
     }
 
     fn get_formats(&mut self, formats: &[ClipboardFormat]) -> ResultType<Vec<ClipboardData>> {
+        #[cfg(target_os = "linux")]
+        if self.inner.is_none() {
+            return crate::platform::linux::wayland_clipboard::get(formats);
+        }
+        let inner = self.inner.as_mut().ok_or_else(|| {
+            hbb_common::anyhow::anyhow!("Clipboard backend unavailable")
+        })?;
         // If there're multiple threads or processes trying to access the clipboard at the same time,
         // the previous clipboard owner will fail to access the clipboard.
         // `GetLastError()` will return `ERROR_CLIPBOARD_NOT_OPEN` (OSError(1418): Thread does not have a clipboard open) at this time.
@@ -361,7 +374,7 @@ impl ClipboardContext {
         // https://github.com/rustdesk/rustdesk/issues/9263
         // https://github.com/rustdesk/rustdesk/issues/9222#issuecomment-2329233175
         for i in 0..CLIPBOARD_GET_MAX_RETRY {
-            match self.inner.get_formats(formats) {
+            match inner.get_formats(formats) {
                 Ok(data) => {
                     return Ok(data
                         .into_iter()
@@ -449,19 +462,31 @@ impl ClipboardContext {
 
     fn set(&mut self, data: &[ClipboardData]) -> ResultType<()> {
         let _lock = ARBOARD_MTX.lock().unwrap();
-        self.inner.set_formats(data)?;
+        #[cfg(target_os = "linux")]
+        if self.inner.is_none() {
+            return crate::platform::linux::wayland_clipboard::set(data);
+        }
+        self.inner
+            .as_mut()
+            .ok_or_else(|| hbb_common::anyhow::anyhow!("Clipboard backend unavailable"))?
+            .set_formats(data)?;
         Ok(())
     }
 
     #[cfg(target_os = "linux")]
     fn set_with_owner_marker_for_linux(&mut self, data: &[ClipboardData]) -> ResultType<()> {
         let _lock = ARBOARD_MTX.lock().unwrap();
-        self.inner
+        if self.inner.is_none() {
+            return crate::platform::linux::wayland_clipboard::set(data);
+        }
+        let inner = self.inner.as_mut().ok_or_else(|| {
+            hbb_common::anyhow::anyhow!("Clipboard backend unavailable")
+        })?;
+        inner
             .set()
             .clipboard(LinuxClipboardKind::Clipboard)
             .formats(data)?;
-        if let Err(e) = self
-            .inner
+        if let Err(e) = inner
             .set()
             .clipboard(LinuxClipboardKind::Primary)
             .formats(data)
@@ -526,15 +551,17 @@ impl ClipboardContext {
                     ""
                 }
                 .to_string();
-                self.inner
-                    .set_formats(&[
-                        ClipboardData::Text(clear_holder_text),
-                        ClipboardData::Special((
-                            RUSTDESK_CLIPBOARD_OWNER_FORMAT.to_owned(),
-                            side.get_owner_data(),
-                        )),
-                    ])
-                    .ok();
+                if let Some(inner) = self.inner.as_mut() {
+                    inner
+                        .set_formats(&[
+                            ClipboardData::Text(clear_holder_text),
+                            ClipboardData::Special((
+                                RUSTDESK_CLIPBOARD_OWNER_FORMAT.to_owned(),
+                                side.get_owner_data(),
+                            )),
+                        ])
+                        .ok();
+                }
             }
         }
     }
@@ -891,7 +918,7 @@ pub fn get_clipboards_msg(client: bool) -> Option<Message> {
 // https://github.com/rustdesk-org/clipboard-master/blob/4fb62e5b62fb6350d82b571ec7ba94b3cd466695/src/master/x11.rs#L226
 #[cfg(not(target_os = "android"))]
 pub mod clipboard_listener {
-    use clipboard_master::{CallbackResult, ClipboardHandler, Master, Shutdown};
+    use clipboard_master::{CallbackResult, ClipboardHandler, Master};
     #[cfg(target_os = "linux")]
     use hbb_common::tokio::sync::watch;
     use hbb_common::{bail, log, ResultType};
@@ -1008,6 +1035,24 @@ pub mod clipboard_listener {
         }
     }
 
+    enum Shutdown {
+        Existing(clipboard_master::Shutdown),
+        #[cfg(target_os = "linux")]
+        Native(Sender<()>),
+    }
+
+    impl Shutdown {
+        fn signal(self) {
+            match self {
+                Self::Existing(shutdown) => shutdown.signal(),
+                #[cfg(target_os = "linux")]
+                Self::Native(tx) => {
+                    let _ = tx.send(());
+                }
+            }
+        }
+    }
+
     #[derive(Default)]
     pub struct ClipboardListener {
         subscribers: Arc<Mutex<HashMap<String, Sender<ClipboardEvent>>>>,
@@ -1103,11 +1148,21 @@ pub mod clipboard_listener {
         handler: impl ClipboardHandler + Send + 'static,
         tx_start_res: Sender<(Option<Shutdown>, String)>,
     ) -> JoinHandle<()> {
+        #[cfg(target_os = "linux")]
+        if crate::platform::linux::wayland_clipboard::enabled() {
+            let (tx, rx) = channel();
+            return std::thread::spawn(move || {
+                let _ = tx_start_res.send((Some(Shutdown::Native(tx)), String::new()));
+                if let Err(err) = crate::platform::linux::wayland_clipboard::listen(handler, rx) {
+                    log::error!("Native Wayland clipboard listener failed: {}", err);
+                }
+            });
+        }
         // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessage#:~:text=The%20window%20must%20belong%20to%20the%20current%20thread.
         let h = std::thread::spawn(move || match Master::new(handler) {
             Ok(mut master) => {
                 tx_start_res
-                    .send((Some(master.shutdown_channel()), "".to_owned()))
+                    .send((Some(Shutdown::Existing(master.shutdown_channel())), "".to_owned()))
                     .ok();
                 log::debug!("Clipboard listener started");
                 if let Err(err) = master.run() {

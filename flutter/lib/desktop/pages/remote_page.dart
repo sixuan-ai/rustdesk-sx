@@ -20,6 +20,7 @@ import '../../models/platform_model.dart';
 import '../../common/shared_state.dart';
 import '../../utils/image.dart';
 import '../widgets/remote_toolbar.dart';
+import '../widgets/wayland_text_input.dart';
 import '../widgets/kb_layout_type_chooser.dart';
 import '../widgets/tabbar_widget.dart';
 import 'macos_full_screen_focus_recovery.dart';
@@ -779,6 +780,30 @@ class _RemotePageState extends State<RemotePage>
               _ffi.ffiModel.pi.isSet.isFalse ? emptyOverlay() : Offstage(),
             ],
           ),
+          if (isLinux && bind.mainCurrentIsWayland() &&
+              bind.mainGetEnv(key: 'GDK_BACKEND') == 'wayland' &&
+              _ffi.ffiModel.pi.isSet.isTrue &&
+              _ffi.inputModel.keyboardPerm && !_ffi.inputModel.isViewOnly)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: WaylandTextInput(
+                onEditing: (editing) {
+                  _ffi.inputModel.enterOrLeave(!editing);
+                  if (editing) {
+                    _rawKeyFocusNode.unfocus();
+                  } else {
+                    _rawKeyFocusNode.requestFocus();
+                  }
+                },
+                sendText: (text) async {
+                  if (!_ffi.inputModel.keyboardPerm || _ffi.inputModel.isViewOnly) {
+                    throw StateError('Remote keyboard permission is unavailable');
+                  }
+                  await bind.sessionInputString(sessionId: sessionId, value: text);
+                },
+              ),
+            ),
         ],
       );
     }

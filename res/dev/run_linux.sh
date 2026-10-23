@@ -18,6 +18,11 @@ case "$backend" in
   wayland|x11) export GDK_BACKEND="$backend" ;;
   *) echo 'RUSTDESK_GDK_BACKEND must be wayland or x11' >&2; exit 1 ;;
 esac
+if [[ "$backend" == wayland && "${XDG_CURRENT_DESKTOP:-}" == *GNOME* ]]; then
+  # GNOME lacks data-control; retain the existing native data-control backend
+  # on other compositors rather than reducing their background-sync capability.
+  export RUSTDESK_WAYLAND_CLIPBOARD="${RUSTDESK_WAYLAND_CLIPBOARD:-1}"
+fi
 # Let native Wayland negotiate per-monitor scaling. Keep the old scale override
 # on the X11 compatibility path, where it was needed on the development host.
 if [[ -n "${RUSTDESK_GDK_SCALE:-}" ]]; then
@@ -38,6 +43,20 @@ fi
 if [[ -n "$gtk_prefix" ]]; then
   [[ -f "$gtk_prefix/lib/libgtk-3.so.0" ]] || { echo 'GTK override library not found' >&2; exit 1; }
   export LD_LIBRARY_PATH="$gtk_prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  # The isolated GTK build has no distro IBus/Fcitx modules. Reuse the ABI-
+  # compatible system module cache instead of silently losing CJK input.
+  gtk_libdir="$(pkg-config --variable=libdir gtk+-3.0)"
+  gtk_abi="$(pkg-config --variable=gtk_binary_version gtk+-3.0)"
+  im_cache="$gtk_libdir/gtk-3.0/$gtk_abi/immodules.cache"
+  if [[ -f "$im_cache" ]]; then
+    export GTK_IM_MODULE_FILE="${GTK_IM_MODULE_FILE:-$im_cache}"
+  fi
+  if [[ "$backend" == wayland && -z "${GTK_IM_MODULE:-}" &&
+        "${XDG_CURRENT_DESKTOP:-}" == *GNOME* &&
+        -f "$gtk_libdir/gtk-3.0/$gtk_abi/immodules/im-ibus.so" ]] &&
+      pgrep -u "$(id -u)" -x ibus-daemon >/dev/null; then
+    export GTK_IM_MODULE=ibus
+  fi
 fi
 renderer="${RUSTDESK_DEV_RENDERER:-skia}"
 case "$renderer" in
