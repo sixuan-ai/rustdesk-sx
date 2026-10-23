@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'common/companion_theme.dart';
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +40,7 @@ late List<String> kBootArgs;
 Future<void> main(List<String> args) async {
   earlyAssert();
   WidgetsFlutterBinding.ensureInitialized();
+  CompanionTheme.registerFontLicense();
 
   debugPrint("launch args: $args");
   kBootArgs = List.from(args);
@@ -371,6 +374,7 @@ void _runApp(
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: supportedLocales,
+      locale: preferredUiLocale(),
       navigatorObservers: [
         // FirebaseAnalyticsObserver(analytics: analytics),
         BotToastNavigatorObserver(),
@@ -512,6 +516,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: supportedLocales,
+          locale: preferredUiLocale(),
           navigatorObservers: [
             // FirebaseAnalyticsObserver(analytics: analytics),
             BotToastNavigatorObserver(),

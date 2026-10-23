@@ -24,6 +24,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 import '../widgets/button.dart';
+import '../widgets/companion_connection_surface.dart';
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -87,7 +88,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         ),
       Align(
         alignment: Alignment.center,
-        child: loadLogo(),
+        child: bind.isCustomClient() ? loadLogo() : const CompanionBrand(),
       ),
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
@@ -129,20 +130,26 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return ChangeNotifierProvider.value(
       value: gFFI.serverModel,
       child: Container(
-        width: isIncomingOnly ? 280.0 : 200.0,
-        color: Theme.of(context).colorScheme.background,
+        width: isIncomingOnly ? 280.0 : 240.0,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [Color(0xFF2A2042), Color(0xFF211A33)]
+                : [Color(0xFFF4EAFB), Color(0xFFF2F9F8)],
+          ),
+        ),
         child: Stack(
           children: [
             Column(
               children: [
-                SingleChildScrollView(
+                Expanded(child: SingleChildScrollView(
                   controller: _leftPaneScrollController,
                   child: Column(
                     key: _childKey,
                     children: children,
                   ),
-                ),
-                Expanded(child: Container())
+                ))
               ],
             ),
             if (isOutgoingOnly)
@@ -189,7 +196,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final model = gFFI.serverModel;
     return Container(
       margin: const EdgeInsets.only(left: 20, right: 11),
-      height: 57,
+      height: 78,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
@@ -235,6 +242,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         controller: model.serverId,
                         readOnly: true,
                         decoration: InputDecoration(
+                          filled: false,
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.only(top: 10, bottom: 10),
                         ),
@@ -332,6 +340,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                             controller: model.serverPasswd,
                             readOnly: true,
                             decoration: InputDecoration(
+                              filled: false,
                               border: InputBorder.none,
                               contentPadding:
                                   EdgeInsets.only(top: 14, bottom: 10),
@@ -597,21 +606,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       }
     }
 
+    final textColor = Theme.of(context).colorScheme.onSurface;
     return Stack(
       children: [
         Container(
           margin: EdgeInsets.fromLTRB(
-              0, marginTop, 0, bind.isIncomingOnly() ? marginTop : 0),
+              12, marginTop, 12, bind.isIncomingOnly() ? marginTop : 0),
           child: Container(
               decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color.fromARGB(255, 226, 66, 188),
-                  Color.fromARGB(255, 244, 114, 124),
-                ],
-              )),
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
               padding: EdgeInsets.all(20),
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -622,7 +628,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                   child: Text(
                                 translate(title),
                                 style: TextStyle(
-                                    color: Colors.white,
+                                    color: textColor,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15),
                               ).marginOnly(bottom: 6)),
@@ -634,7 +640,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                             translate(content),
                             style: TextStyle(
                                 height: 1.5,
-                                color: Colors.white,
+                                color: textColor,
                                 fontWeight: FontWeight.normal,
                                 fontSize: 13),
                           ).marginOnly(bottom: 20)
@@ -649,8 +655,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                       padding: 8,
                                       isOutline: true,
                                       text: translate(btnText),
-                                      textColor: Colors.white,
-                                      borderColor: Colors.white,
+                                      textColor: textColor,
+                                      borderColor: textColor,
                                       textSize: 20,
                                       radius: 10,
                                       onTap: onPressed,
@@ -669,7 +675,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                         style: TextStyle(
                                             decoration:
                                                 TextDecoration.underline,
-                                            color: Colors.white,
+                                            color: textColor,
                                             fontSize: 12),
                                       )).marginOnly(top: 6)),
                             ]
@@ -682,7 +688,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             child: IconButton(
               icon: Icon(
                 Icons.close,
-                color: Colors.white,
+                color: textColor,
                 size: 20,
               ),
               onPressed: closeCard,
