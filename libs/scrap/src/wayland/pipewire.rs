@@ -262,6 +262,7 @@ pub struct PipeWireRecorder {
     width: usize,
     height: usize,
     saved_raw_data: Vec<u8>, // for faster compare and copy
+    reuse_buffer: bool,
     metrics: Option<super::capture_metrics::CaptureMetrics>,
 }
 
@@ -366,6 +367,7 @@ impl PipeWireRecorder {
             buffer_cropped: vec![],
             is_cropped: false,
             saved_raw_data: Vec::new(),
+            reuse_buffer: std::env::var("RUSTDESK_PIPEWIRE_REUSE_BUFFER").as_deref() != Ok("0"),
             metrics,
         })
     }
@@ -416,7 +418,13 @@ impl Recorder for PipeWireRecorder {
                 .map_err(|_| GStreamerError("Failed to map buffer.".into()))?;
             super::capture_metrics::CaptureMetrics::end(&mut self.metrics, 1, map_start);
             let compare_start = super::capture_metrics::CaptureMetrics::begin(&self.metrics);
-            let duplicate = crate::would_block_if_equal(&mut self.saved_raw_data, buf.as_slice()).is_err();
+            // always-copy plus the owned read mapping keeps the previous pixels alive;
+            // comparing that mapping avoids copying the entire frame into a second cache.
+            let duplicate = if self.reuse_buffer {
+                super::buffer_compare::same_pixels(self.buffer.as_ref(), buf.as_slice())
+            } else {
+                crate::would_block_if_equal(&mut self.saved_raw_data, buf.as_slice()).is_err()
+            };
             super::capture_metrics::CaptureMetrics::end(&mut self.metrics, 2, compare_start);
             if let Some(metrics) = &mut self.metrics {
                 metrics.compared(duplicate);

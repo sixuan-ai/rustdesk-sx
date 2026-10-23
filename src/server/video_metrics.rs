@@ -119,7 +119,12 @@ impl VideoSendMetrics {
 #[cfg(target_os = "linux")]
 pub fn append_environment(envs: &mut Vec<(&'static str, String)>) {
     // Ubuntu's sudo fallback intentionally passes only explicit variables to the
-    // desktop user. Preserve this opt-in without widening that environment list.
+    // desktop user. Forward only the explicit capture switch and metrics opt-in.
+    if let Ok(value) = std::env::var("RUSTDESK_PIPEWIRE_REUSE_BUFFER") {
+        if value == "0" || value == "1" {
+            envs.push(("RUSTDESK_PIPEWIRE_REUSE_BUFFER", value));
+        }
+    }
     if std::env::var("RUSTDESK_DISPLAY_METRICS").as_deref() == Ok("1") {
         envs.push(("RUSTDESK_DISPLAY_METRICS", "1".into()));
         envs.push((
