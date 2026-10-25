@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/hbbs/hbbs.dart';
 import 'package:flutter_hbb/common/widgets/login.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
+import 'package:flutter_hbb/desktop/widgets/companion_peer_widgets.dart';
+import 'package:flutter_hbb/models/peer_tab_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 
@@ -31,9 +33,14 @@ class _MyGroupState extends State<MyGroup> {
   Widget build(BuildContext context) {
     return Obx(() {
       if (!gFFI.userModel.isLogin) {
-        return Center(
-            child: ElevatedButton(
-                onPressed: loginDialog, child: Text(translate("Login"))));
+        return CompanionPeerEmptyState(
+          icon: PeerTabModel.icons[PeerTabIndex.group.index],
+          title: translate(PeerTabModel.tabNames[PeerTabIndex.group.index]),
+          action: FilledButton.icon(
+              onPressed: loginDialog,
+              icon: const Icon(Icons.login_rounded, size: 18),
+              label: Text(translate("Login"))),
+        );
       } else if (gFFI.userModel.networkError.isNotEmpty) {
         return netWorkErrorWidget();
       } else if (gFFI.groupModel.groupLoading.value && gFFI.groupModel.emtpy) {
@@ -64,7 +71,7 @@ class _MyGroupState extends State<MyGroup> {
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border:
-                  Border.all(color: Theme.of(context).colorScheme.background)),
+                  Border.all(color: Theme.of(context).colorScheme.surface)),
           child: Container(
             width: 150,
             height: double.infinity,
@@ -100,7 +107,7 @@ class _MyGroupState extends State<MyGroup> {
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
               border:
-                  Border.all(color: Theme.of(context).colorScheme.background)),
+                  Border.all(color: Theme.of(context).colorScheme.surface)),
           child: Container(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -219,7 +226,7 @@ class _MyGroupState extends State<MyGroup> {
             border: Border(
                 bottom: BorderSide(
                     width: 0.7,
-                    color: Theme.of(context).dividerColor.withOpacity(0.1))),
+                    color: Theme.of(context).dividerColor.withValues(alpha: .1))),
           ),
           child: Container(
             child: Row(
@@ -287,7 +294,7 @@ class _MyGroupState extends State<MyGroup> {
             border: Border(
                 bottom: BorderSide(
                     width: 0.7,
-                    color: Theme.of(context).dividerColor.withOpacity(0.1))),
+                    color: Theme.of(context).dividerColor.withValues(alpha: .1))),
           ),
           child: Container(
             child: Row(

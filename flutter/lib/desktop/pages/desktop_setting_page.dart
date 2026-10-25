@@ -11,6 +11,7 @@ import 'package:flutter_hbb/common/widgets/setting_widgets.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_home_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
+import 'package:flutter_hbb/desktop/widgets/companion_peer_widgets.dart';
 import 'package:flutter_hbb/desktop/widgets/remote_toolbar.dart';
 import 'package:flutter_hbb/mobile/widgets/dialog.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
@@ -2411,13 +2412,11 @@ class __PrinterState extends State<_Printer> {
         Obx(
           () => failedMsg.value.isEmpty
               ? Offstage()
-              : Align(
-                  alignment: Alignment.topLeft,
-                  child: Text(failedMsg.value,
-                          style: DefaultTextStyle.of(context)
-                              .style
-                              .copyWith(color: Colors.red))
-                      .marginOnly(bottom: 10.0)),
+              : CompanionErrorBanner(
+                  message: failedMsg.value,
+                  closeLabel: translate("Close"),
+                  onClose: () => failedMsg.value = '',
+                ).marginOnly(bottom: 10.0),
         ),
         _Button('Install {$appName} Printer', () {
           failedMsg.value = '';
@@ -2893,13 +2892,11 @@ class _WaylandCardState extends State<WaylandCard> {
       Obx(
         () => _clearShortcutsInhibitorFailedMsg.value.isEmpty
             ? Offstage()
-            : Align(
-                alignment: Alignment.topLeft,
-                child: Text(_clearShortcutsInhibitorFailedMsg.value,
-                        style: DefaultTextStyle.of(context)
-                            .style
-                            .copyWith(color: Colors.red))
-                    .marginOnly(bottom: 10.0)),
+            : CompanionErrorBanner(
+                message: _clearShortcutsInhibitorFailedMsg.value,
+                closeLabel: translate("Close"),
+                onClose: () => _clearShortcutsInhibitorFailedMsg.value = '',
+              ).marginOnly(left: _kContentHMargin, bottom: 10.0),
       ),
       _Button(
         'Reset keyboard shortcuts permission',

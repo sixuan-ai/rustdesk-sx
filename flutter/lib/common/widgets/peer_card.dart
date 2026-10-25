@@ -148,8 +148,12 @@ class _PeerCardState extends State<_PeerCard>
         Container(
             decoration: BoxDecoration(
               color: isDesktop
-                  ? CompanionTheme.violet
+                  ? null
                   : str2color('${peer.id}${peer.platform}', 0x7f),
+              gradient: isDesktop
+                  ? CompanionTheme.primaryGradient(
+                      Theme.of(context).brightness == Brightness.dark)
+                  : null,
               borderRadius: isPortrait
                   ? BorderRadius.circular(_tileRadius)
                   : BorderRadius.only(

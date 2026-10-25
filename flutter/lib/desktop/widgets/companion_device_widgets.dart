@@ -25,45 +25,68 @@ class CompanionDeviceCard extends StatelessWidget {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
     final statusColor = online
-        ? (dark ? CompanionTheme.mint : const Color(0xFF176B5D))
+        ? (dark ? CompanionTheme.mint : CompanionTheme.mintDeep)
         : theme.hintColor;
     return Container(
       foregroundDecoration: foregroundDecoration,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: .18)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: dark
+                ? Colors.white.withValues(alpha: .12)
+                : theme.colorScheme.primary.withValues(alpha: .14)),
         gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: dark
-                ? const [Color(0xFF342541), Color(0xFF27263D)]
-                : const [Color(0xFFFFF5FC), Color(0xFFF1F6FA)]),
+                ? const [Color(0xFF3A2A55), Color(0xFF25203E)]
+                : const [Color(0xFFFFF9FC), Color(0xFFF0F7FA)]),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: dark ? .20 : .05),
+              blurRadius: 18,
+              offset: const Offset(0, 8)),
+        ],
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-              width: 32,
-              height: 32,
-              padding: const EdgeInsets.all(5),
+              width: 40,
+              height: 40,
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                  color: CompanionTheme.violet,
-                  borderRadius: BorderRadius.circular(10)),
+                  gradient: CompanionTheme.primaryGradient(dark),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: .22), width: .8),
+                  boxShadow: CompanionTheme.glow(CompanionTheme.violet,
+                      blur: 16, y: 5, alpha: .26)),
               child: platform),
-          const SizedBox(width: 8),
+          const SizedBox(width: 9),
           Expanded(
               child: Tooltip(
                   message: statusLabel,
                   child: Row(children: [
-                    Icon(Icons.circle, size: 6, color: statusColor),
-                    const SizedBox(width: 5),
-                    Expanded(
-                        child: Text(statusLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                TextStyle(fontSize: 11, color: statusColor))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: .12),
+                          borderRadius: CompanionTheme.pill),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.circle, size: 6.5, color: statusColor),
+                        const SizedBox(width: 5),
+                        Flexible(
+                            child: Text(statusLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor))),
+                      ]),
+                    ),
                   ]))),
           SizedBox.square(dimension: 32, child: Center(child: action)),
         ]),
@@ -79,12 +102,19 @@ class CompanionDeviceCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600))),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .1,
+                        height: 1.3))),
             if (title != id)
               Text(id,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: theme.hintColor)),
+                  style: TextStyle(
+                      fontSize: 12,
+                      height: 1.45,
+                      letterSpacing: .3,
+                      color: theme.hintColor)),
             if (host.isNotEmpty && host != title && host != id)
               Tooltip(
                   message: host,
@@ -136,8 +166,16 @@ class CompanionDeviceSearch extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hint,
               isDense: true,
+              border: OutlineInputBorder(
+                  borderRadius: CompanionTheme.pill,
+                  borderSide:
+                      BorderSide(color: Theme.of(context).dividerColor)),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: CompanionTheme.pill,
+                  borderSide:
+                      BorderSide(color: Theme.of(context).dividerColor)),
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               suffixIconConstraints:
                   const BoxConstraints(minWidth: 32, minHeight: 32),
               suffixIcon: value.text.isEmpty
@@ -181,9 +219,20 @@ class CompanionNoSearchResults extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.search_off_rounded,
-                size: 36, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 12),
+            Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [
+                      CompanionTheme.violet.withValues(alpha: .18),
+                      CompanionTheme.pink.withValues(alpha: .18)
+                    ]),
+                    boxShadow: CompanionTheme.glow(CompanionTheme.violet,
+                        blur: 22, y: 8, alpha: .18)),
+                child: Icon(Icons.search_off_rounded,
+                    size: 30, color: Theme.of(context).colorScheme.primary)),
+            const SizedBox(height: 14),
             Text(title,
                 textAlign: TextAlign.center,
                 style:
@@ -202,6 +251,23 @@ class CompanionNoSearchResults extends StatelessWidget {
           ]),
         ),
       ));
+}
+
+class CompanionPublicServerHint extends StatelessWidget {
+  const CompanionPublicServerHint(
+      {super.key, required this.text, this.onTap});
+  final String text;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        child: Text(text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                decoration: TextDecoration.underline, fontSize: 14)),
+      );
 }
 
 class CompanionServiceStatusLabel extends StatelessWidget {

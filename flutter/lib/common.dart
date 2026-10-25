@@ -9,6 +9,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
+import 'package:flutter_hbb/desktop/widgets/companion_peer_widgets.dart';
 import 'package:flutter_hbb/desktop/widgets/refresh_wrapper.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
 import 'package:flutter_hbb/main.dart';
@@ -3259,49 +3260,13 @@ Widget buildErrorBanner(BuildContext context,
     required Function close}) {
   return Obx(() => Offstage(
         offstage: !(!loading.value && err.value.isNotEmpty),
-        child: Center(
-            child: Container(
-          color: MyTheme.color(context).errorBannerBg,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              FittedBox(
-                child: Icon(
-                  Icons.info,
-                  color: Color.fromARGB(255, 249, 81, 81),
-                ),
-              ).marginAll(4),
-              Flexible(
-                child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Tooltip(
-                      message: translate(err.value),
-                      child: SelectableText(
-                        translate(err.value),
-                      ),
-                    )).marginSymmetric(vertical: 2),
-              ),
-              if (retry != null)
-                InkWell(
-                    onTap: () {
-                      retry.call();
-                    },
-                    child: Text(
-                      translate("Retry"),
-                      style: TextStyle(color: MyTheme.accent),
-                    )).marginSymmetric(horizontal: 5),
-              FittedBox(
-                child: InkWell(
-                  onTap: () {
-                    close.call();
-                  },
-                  child: Icon(Icons.close).marginSymmetric(horizontal: 5),
-                ),
-              ).marginAll(4)
-            ],
-          ),
-        )).marginOnly(bottom: 14),
+        child: CompanionErrorBanner(
+          message: translate(err.value),
+          retryLabel: retry == null ? null : translate("Retry"),
+          onRetry: retry == null ? null : () => retry(),
+          closeLabel: translate("Close"),
+          onClose: () => close(),
+        ).marginOnly(left: 12, right: 12, bottom: 14),
       ));
 }
 
@@ -4036,21 +4001,28 @@ disableWindowMovable(int? windowId) {
 }
 
 Widget netWorkErrorWidget() {
-  return Center(
-      child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      if (!gFFI.userModel.networkErrorFromServer.value)
-        Text(translate("network_error_tip")),
-      ElevatedButton(
-              onPressed: gFFI.userModel.refreshCurrentUser,
-              child: Text(translate("Retry")))
-          .marginSymmetric(vertical: 16),
-      SelectableText(gFFI.userModel.networkError.value,
-          style: TextStyle(fontSize: 11, color: Colors.red)),
-    ],
-  ));
+  final fromServer = gFFI.userModel.networkErrorFromServer.value;
+  final error = gFFI.userModel.networkError.value;
+  return CompanionPeerEmptyState(
+    icon: Icons.cloud_off_rounded,
+    title: translate("Network error"),
+    message: fromServer ? '' : translate("network_error_tip"),
+    detail: error.isEmpty
+        ? null
+        : Builder(
+            builder: (context) => SelectableText(error,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .error
+                        .withValues(alpha: .9)))),
+    action: FilledButton.icon(
+        onPressed: gFFI.userModel.refreshCurrentUser,
+        icon: const Icon(Icons.refresh_rounded, size: 18),
+        label: Text(translate("Retry"))),
+  );
 }
 
 List<ResizeEdge>? get windowManagerEnableResizeEdges => isWindows

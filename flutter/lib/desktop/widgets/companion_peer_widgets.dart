@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../common/companion_theme.dart';
+
 class CompanionPeerTabLabel extends StatelessWidget {
   const CompanionPeerTabLabel(
       {super.key,
@@ -23,9 +25,9 @@ class CompanionPeerTabLabel extends StatelessWidget {
         selected: selected,
         excludeSemantics: true,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 20, color: color),
+            Icon(icon, size: 18, color: color),
             if (showLabel) ...[
               const SizedBox(width: 6),
               ConstrainedBox(
@@ -50,11 +52,15 @@ class CompanionPeerEmptyState extends StatelessWidget {
       {super.key,
       required this.icon,
       required this.title,
-      required this.message});
+      this.message = '',
+      this.detail,
+      this.action});
 
   final IconData icon;
   final String title;
   final String message;
+  final Widget? detail;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -66,28 +72,112 @@ class CompanionPeerEmptyState extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 360),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-                width: 56,
-                height: 56,
+                width: 66,
+                height: 66,
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: theme.colorScheme.primary.withValues(alpha: .09)),
-                child: Icon(icon, size: 26, color: theme.colorScheme.primary)),
+                    gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          theme.colorScheme.primary.withValues(alpha: .18),
+                          CompanionTheme.pink.withValues(alpha: .16)
+                        ]),
+                    border: Border.all(
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: .18)),
+                    boxShadow: CompanionTheme.glow(CompanionTheme.violet,
+                        blur: 26, y: 10, alpha: .20)),
+                child: Icon(icon, size: 28, color: theme.colorScheme.primary)),
             const SizedBox(height: 16),
             Text(title,
                 textAlign: TextAlign.center,
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 14,
-                    height: 1.6,
-                    color: theme.textTheme.bodyMedium?.color
-                        ?.withValues(alpha: .7))),
+            if (message.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 13,
+                      height: 1.6,
+                      color: theme.textTheme.bodyMedium?.color
+                          ?.withValues(alpha: .7))),
+            ],
+            if (detail != null) ...[
+              const SizedBox(height: 12),
+              detail!,
+            ],
+            if (action != null) ...[
+              const SizedBox(height: 18),
+              action!,
+            ],
           ]),
         ),
       ),
+    );
+  }
+}
+
+class CompanionErrorBanner extends StatelessWidget {
+  const CompanionErrorBanner(
+      {super.key,
+      required this.message,
+      this.retryLabel,
+      this.onRetry,
+      this.closeLabel,
+      required this.onClose});
+
+  final String message;
+  final String? retryLabel;
+  final VoidCallback? onRetry;
+  final String? closeLabel;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = CompanionTheme.isDark(context);
+    final error = theme.colorScheme.error;
+    final textColor = theme.textTheme.bodyMedium?.color;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(CompanionTheme.controlRadius),
+          color: error.withValues(alpha: dark ? .16 : .07),
+          border: Border.all(color: error.withValues(alpha: dark ? .34 : .20))),
+      child: Row(children: [
+        Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: error.withValues(alpha: dark ? .22 : .12)),
+            child: Icon(Icons.error_outline_rounded, size: 18, color: error)),
+        const SizedBox(width: 10),
+        Expanded(
+            child: SelectableText(message,
+                style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: textColor?.withValues(alpha: .92)))),
+        if (retryLabel != null && onRetry != null)
+          TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                  foregroundColor: error,
+                  visualDensity: VisualDensity.compact,
+                  textStyle: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+              child: Text(retryLabel!)),
+        IconButton(
+            onPressed: onClose,
+            tooltip: closeLabel,
+            visualDensity: VisualDensity.compact,
+            iconSize: 16,
+            color: textColor?.withValues(alpha: .65),
+            icon: const Icon(Icons.close_rounded)),
+      ]),
     );
   }
 }

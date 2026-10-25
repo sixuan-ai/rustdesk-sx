@@ -102,4 +102,88 @@ void main() {
     expect(find.text('收藏常用设备后，可在这里快速连接。').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Login prompt keeps the empty-state layout and its action',
+      (tester) async {
+    var loggedIn = false;
+    await tester.binding.setSurfaceSize(const Size(320, 420));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: CompanionPeerEmptyState(
+      icon: Icons.menu_book_rounded,
+      title: '地址簿',
+      action: FilledButton.icon(
+          onPressed: () => loggedIn = true,
+          icon: const Icon(Icons.login_rounded, size: 18),
+          label: const Text('登录')),
+    ))));
+    expect(find.text('地址簿'), findsOneWidget);
+    expect(find.byType(SingleChildScrollView), findsOneWidget);
+    await tester.tap(find.text('登录'));
+    expect(loggedIn, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final dark in [false, true]) {
+    testWidgets(
+        'Network error detail sits above the retry action in '
+        '${dark ? 'dark' : 'light'} theme', (tester) async {
+      var retried = false;
+      final theme = CompanionTheme.apply(
+          ThemeData(brightness: dark ? Brightness.dark : Brightness.light));
+      await tester.binding.setSurfaceSize(const Size(320, 420));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          home: Scaffold(
+              body: CompanionPeerEmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: '网络错误',
+            message: '请检查网络连接后重试。',
+            detail: const SelectableText('Failed to load the address book'),
+            action: FilledButton.icon(
+                onPressed: () => retried = true,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('重试')),
+          ))));
+      expect(find.text('Failed to load the address book'), findsOneWidget);
+      expect(
+          tester.getCenter(find.text('Failed to load the address book')).dy,
+          lessThan(tester.getCenter(find.text('重试')).dy));
+      await tester.tap(find.text('重试'));
+      expect(retried, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final dark in [false, true]) {
+    testWidgets(
+        'Inline error banner keeps retry and close reachable in a narrow '
+        '${dark ? 'dark' : 'light'} window', (tester) async {
+      var retried = false, closed = false;
+      final theme = CompanionTheme.apply(
+          ThemeData(brightness: dark ? Brightness.dark : Brightness.light));
+      await tester.binding.setSurfaceSize(const Size(300, 240));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          home: Scaffold(
+              body: Align(
+                  alignment: Alignment.topCenter,
+                  child: CompanionErrorBanner(
+                    message: '获取地址簿失败，请检查网络连接后重试。',
+                    retryLabel: '重试',
+                    onRetry: () => retried = true,
+                    closeLabel: '关闭',
+                    onClose: () => closed = true,
+                  )))));
+      expect(find.text('获取地址簿失败，请检查网络连接后重试。'), findsOneWidget);
+      await tester.tap(find.text('重试'));
+      await tester.tap(find.byTooltip('关闭'));
+      expect(retried, isTrue);
+      expect(closed, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

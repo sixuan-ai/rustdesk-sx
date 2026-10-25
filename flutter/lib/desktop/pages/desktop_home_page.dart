@@ -6,7 +6,9 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/common/companion_theme.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
+import 'package:flutter_hbb/common/widgets/companion_backdrop.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
@@ -91,8 +93,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         child: bind.isCustomClient() ? loadLogo() : const CompanionBrand(),
       ),
       buildTip(context),
-      if (!isOutgoingOnly) buildIDBoard(context),
-      if (!isOutgoingOnly) buildPasswordBoard(context),
+      if (!isOutgoingOnly) buildIdentityCard(context),
       FutureBuilder<Widget>(
         future: Future.value(
             Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
@@ -129,90 +130,116 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final textColor = Theme.of(context).textTheme.titleLarge?.color;
     return ChangeNotifierProvider.value(
       value: gFFI.serverModel,
-      child: Container(
+      child: SizedBox(
         width: isIncomingOnly ? 280.0 : 240.0,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: Theme.of(context).brightness == Brightness.dark
-                ? [Color(0xFF2A2042), Color(0xFF211A33)]
-                : [Color(0xFFF4EAFB), Color(0xFFF2F9F8)],
-          ),
-        ),
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(child: SingleChildScrollView(
-                  controller: _leftPaneScrollController,
-                  child: Column(
-                    key: _childKey,
-                    children: children,
-                  ),
-                ))
-              ],
-            ),
-            if (isOutgoingOnly)
-              Positioned(
-                bottom: 6,
-                left: 12,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: InkWell(
-                    child: Obx(
-                      () => Icon(
-                        Icons.settings,
-                        color: _editHover.value
-                            ? textColor
-                            : Colors.grey.withOpacity(0.5),
-                        size: 22,
-                      ),
+        child: CompanionBackdrop(
+          variant: CompanionBackdropVariant.sidebar,
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                      child: SingleChildScrollView(
+                    controller: _leftPaneScrollController,
+                    child: Column(
+                      key: _childKey,
+                      children: children,
                     ),
-                    onTap: () => {
-                      if (DesktopSettingPage.tabKeys.isNotEmpty)
-                        {
-                          DesktopSettingPage.switch2page(
-                              DesktopSettingPage.tabKeys[0])
-                        }
-                    },
-                    onHover: (value) => _editHover.value = value,
+                  ))
+                ],
+              ),
+              if (isOutgoingOnly)
+                Positioned(
+                  bottom: 10,
+                  left: 14,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      child: Obx(
+                        () => Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _editHover.value
+                                  ? MyTheme.accent.withValues(alpha: .14)
+                                  : Colors.transparent),
+                          child: Icon(
+                            Icons.settings_rounded,
+                            color: _editHover.value
+                                ? textColor
+                                : Theme.of(context)
+                                    .hintColor
+                                    .withValues(alpha: .8),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      onTap: () => {
+                        if (DesktopSettingPage.tabKeys.isNotEmpty)
+                          {
+                            DesktopSettingPage.switch2page(
+                                DesktopSettingPage.tabKeys[0])
+                          }
+                      },
+                      onHover: (value) => _editHover.value = value,
+                    ),
                   ),
-                ),
-              )
-          ],
+                )
+            ],
+          ),
         ),
       ),
     );
   }
 
+  Widget buildIdentityCard(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: Container(
+        decoration: CompanionTheme.panel(context, radius: 22, withGlow: true),
+        child: Column(children: [
+          buildIDBoard(context),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Divider(height: 1),
+          ),
+          buildPasswordBoard(context),
+        ]),
+      ),
+    );
+  }
+
   buildRightPane(BuildContext context) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
+    return CompanionBackdrop(
       child: ConnectionPage(),
     );
   }
 
   buildIDBoard(BuildContext context) {
     final model = gFFI.serverModel;
+    final dark = CompanionTheme.isDark(context);
     return Container(
-      margin: const EdgeInsets.only(left: 20, right: 11),
-      height: 78,
+      margin: const EdgeInsets.only(left: 16, right: 8, top: 8),
+      height: 80,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
           Container(
-            width: 2,
-            decoration: const BoxDecoration(color: MyTheme.accent),
-          ).marginOnly(top: 5),
+            width: 3,
+            decoration: BoxDecoration(
+                gradient: CompanionTheme.primaryGradient(dark),
+                borderRadius: BorderRadius.circular(999)),
+          ).marginOnly(top: 7, bottom: 7),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(left: 7),
+              padding: const EdgeInsets.only(left: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    height: 25,
+                    height: 26,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,13 +247,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         Text(
                           translate("ID"),
                           style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.6,
                               color: Theme.of(context)
                                   .textTheme
                                   .titleLarge
                                   ?.color
-                                  ?.withOpacity(0.5)),
-                        ).marginOnly(top: 5),
+                                  ?.withValues(alpha: .5)),
+                        ).marginOnly(top: 7),
                         buildPopupMenu(context)
                       ],
                     ),
@@ -244,10 +273,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         decoration: InputDecoration(
                           filled: false,
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.only(top: 10, bottom: 10),
+                          contentPadding: EdgeInsets.only(top: 8, bottom: 8),
                         ),
                         style: TextStyle(
                           fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.4,
                         ),
                       ).workaroundFreezeLinuxMint(),
                     ),
@@ -265,19 +296,22 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final textColor = Theme.of(context).textTheme.titleLarge?.color;
     RxBool hover = false.obs;
     return InkWell(
+      borderRadius: BorderRadius.circular(999),
       onTap: DesktopTabPage.onAddSetting,
       child: Tooltip(
         message: translate('Settings'),
         child: Obx(
-          () => CircleAvatar(
-            radius: 15,
-            backgroundColor: hover.value
-                ? Theme.of(context).scaffoldBackgroundColor
-                : Theme.of(context).colorScheme.background,
+          () => Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color:
+                    MyTheme.accent.withValues(alpha: hover.value ? .16 : .0)),
             child: Icon(
-              Icons.more_vert_outlined,
-              size: 20,
-              color: hover.value ? textColor : textColor?.withOpacity(0.5),
+              Icons.more_vert_rounded,
+              size: 19,
+              color: hover.value ? textColor : textColor?.withValues(alpha: .5),
             ),
           ),
         ),
@@ -300,29 +334,42 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     RxBool refreshHover = false.obs;
     RxBool editHover = false.obs;
     final textColor = Theme.of(context).textTheme.titleLarge?.color;
+    final hintColor = Theme.of(context).hintColor;
+    final dark = CompanionTheme.isDark(context);
     final showOneTime = model.approveMode != 'click' &&
         model.verificationMethod != kUsePermanentPassword;
     return Container(
-      margin: EdgeInsets.only(left: 20.0, right: 16, top: 13, bottom: 13),
+      margin: EdgeInsets.only(left: 16.0, right: 10, top: 10, bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
           Container(
-            width: 2,
-            height: 52,
-            decoration: BoxDecoration(color: MyTheme.accent),
+            width: 3,
+            height: 50,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: dark
+                        ? const [CompanionTheme.mint, Color(0xFF74C7CE)]
+                        : const [CompanionTheme.pink, CompanionTheme.violet]),
+                borderRadius: BorderRadius.circular(999)),
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(left: 7),
+              padding: const EdgeInsets.only(left: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AutoSizeText(
                     translate("One-time Password"),
                     style: TextStyle(
-                        fontSize: 14, color: textColor?.withOpacity(0.5)),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: .6,
+                        color: textColor?.withValues(alpha: .5)),
                     maxLines: 1,
                   ),
                   Row(
@@ -343,9 +390,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                               filled: false,
                               border: InputBorder.none,
                               contentPadding:
-                                  EdgeInsets.only(top: 14, bottom: 10),
+                                  EdgeInsets.only(top: 12, bottom: 8),
                             ),
-                            style: TextStyle(fontSize: 15),
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 2),
                           ).workaroundFreezeLinuxMint(),
                         ),
                       ),
@@ -357,26 +407,25 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                             child: Obx(() => RotatedBox(
                                 quarterTurns: 2,
                                 child: Icon(
-                                  Icons.refresh,
+                                  Icons.refresh_rounded,
                                   color: refreshHover.value
                                       ? textColor
-                                      : Color(0xFFDDDDDD),
-                                  size: 22,
+                                      : hintColor,
+                                  size: 20,
                                 ))),
                           ),
                           onHover: (value) => refreshHover.value = value,
                         ).marginOnly(right: 8, top: 4),
                       if (!bind.isDisableSettings())
                         InkWell(
+                          borderRadius: BorderRadius.circular(999),
                           child: Tooltip(
                             message: translate('Change Password'),
                             child: Obx(
                               () => Icon(
-                                Icons.edit,
-                                color: editHover.value
-                                    ? textColor
-                                    : Color(0xFFDDDDDD),
-                                size: 22,
+                                Icons.edit_rounded,
+                                color: editHover.value ? textColor : hintColor,
+                                size: 20,
                               ).marginOnly(right: 8, top: 4),
                             ),
                           ),
@@ -411,26 +460,25 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   alignment: Alignment.centerLeft,
                   child: Text(
                     translate("Your Desktop"),
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
             ],
           ),
           SizedBox(
-            height: 10.0,
+            height: 8.0,
           ),
-          if (!isOutgoingOnly)
-            Text(
-              translate("desk_tip"),
-              overflow: TextOverflow.clip,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          if (isOutgoingOnly)
-            Text(
-              translate("outgoing_only_desk_tip"),
-              overflow: TextOverflow.clip,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+          Text(
+            isOutgoingOnly
+                ? translate("outgoing_only_desk_tip")
+                : translate("desk_tip"),
+            overflow: TextOverflow.clip,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontSize: 12, height: 1.55, color: Theme.of(context).hintColor),
+          ),
         ],
       ),
     );
@@ -613,11 +661,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           margin: EdgeInsets.fromLTRB(
               12, marginTop, 12, bind.isIncomingOnly() ? marginTop : 0),
           child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Theme.of(context).dividerColor),
-              ),
+              decoration: CompanionTheme.panel(context,
+                  radius: 20, border: Theme.of(context).dividerColor),
               padding: EdgeInsets.all(20),
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -651,14 +696,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     FixedWidthButton(
-                                      width: 150,
-                                      padding: 8,
+                                      width: 132,
+                                      padding: 9,
                                       isOutline: true,
                                       text: translate(btnText),
                                       textColor: textColor,
-                                      borderColor: textColor,
-                                      textSize: 20,
-                                      radius: 10,
+                                      borderColor: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: .55),
+                                      textSize: 14,
+                                      radius: 999,
                                       onTap: onPressed,
                                     )
                                   ])
@@ -771,7 +819,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
     bool isChattyMethod(String methodName) {
       switch (methodName) {
-        case kWindowBumpMouse: return true;
+        case kWindowBumpMouse:
+          return true;
       }
 
       return false;
@@ -780,7 +829,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     rustDeskWinManager.setMethodHandler((call, fromWindowId) async {
       if (!isChattyMethod(call.method)) {
         debugPrint(
-          "[Main] call ${call.method} with args ${call.arguments} from window $fromWindowId");
+            "[Main] call ${call.method} with args ${call.arguments} from window $fromWindowId");
       }
       if (call.method == kWindowMainWindowOnTop) {
         windowOnTop(null);
@@ -808,9 +857,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           connToken: call.arguments['connToken'],
         );
       } else if (call.method == kWindowBumpMouse) {
-        return RdPlatformChannel.instance.bumpMouse(
-          dx: call.arguments['dx'],
-          dy: call.arguments['dy']);
+        return RdPlatformChannel.instance
+            .bumpMouse(dx: call.arguments['dx'], dy: call.arguments['dy']);
       } else if (call.method == kWindowEventMoveTabToNewWindow) {
         final args = call.arguments.split(',');
         int? windowId;

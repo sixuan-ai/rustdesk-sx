@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_hbb/common/companion_theme.dart';
 import 'package:flutter_hbb/desktop/widgets/companion_device_widgets.dart';
@@ -99,5 +100,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ID 服务器: 未就绪\n$detail'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'Public server hint stays a single ellipsized line in a narrow status row',
+      (tester) async {
+    const hint = '如果需要更快的连接速度，你可以选择自建服务器或联系管理员配置中继';
+    var tapped = false;
+    for (final dark in [false, true]) {
+      for (final scale in [1.0, 1.5]) {
+        await tester.pumpWidget(MaterialApp(
+          theme: CompanionTheme.apply(
+              ThemeData(brightness: dark ? Brightness.dark : Brightness.light)),
+          home: Scaffold(
+            body: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+              child: Center(
+                child: SizedBox(
+                  width: 260,
+                  height: 42,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(', '),
+                      Flexible(
+                          child: CompanionPublicServerHint(
+                              text: hint, onTap: () => tapped = true)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        final paragraph = tester.renderObject<RenderParagraph>(find.text(hint));
+        expect(paragraph.didExceedMaxLines, isTrue);
+        expect(tester.getSize(find.text(hint)).height,
+            lessThan(14 * scale * 1.6));
+      }
+    }
+    await tester.tap(find.text(hint));
+    expect(tapped, isTrue);
   });
 }

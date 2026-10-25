@@ -9,8 +9,10 @@ import 'package:flutter_hbb/common/hbbs/hbbs.dart';
 import 'package:flutter_hbb/common/widgets/peer_card.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
 import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/desktop/widgets/companion_peer_widgets.dart';
 import 'package:flutter_hbb/desktop/widgets/popup_menu.dart';
 import 'package:flutter_hbb/models/ab_model.dart';
+import 'package:flutter_hbb/models/peer_tab_model.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -40,9 +42,14 @@ class _AddressBookState extends State<AddressBook> {
   @override
   Widget build(BuildContext context) => Obx(() {
         if (!gFFI.userModel.isLogin) {
-          return Center(
-              child: ElevatedButton(
-                  onPressed: loginDialog, child: Text(translate("Login"))));
+          return CompanionPeerEmptyState(
+            icon: PeerTabModel.icons[PeerTabIndex.ab.index],
+            title: translate(PeerTabModel.tabNames[PeerTabIndex.ab.index]),
+            action: FilledButton.icon(
+                onPressed: loginDialog,
+                icon: const Icon(Icons.login_rounded, size: 18),
+                label: Text(translate("Login"))),
+          );
         } else if (gFFI.userModel.networkError.isNotEmpty) {
           return netWorkErrorWidget();
         } else {
@@ -81,7 +88,7 @@ class _AddressBookState extends State<AddressBook> {
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: Theme.of(context).colorScheme.background)),
+                      color: Theme.of(context).colorScheme.surface)),
               child: Container(
                 width: 200,
                 height: double.infinity,
@@ -119,7 +126,7 @@ class _AddressBookState extends State<AddressBook> {
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                      color: Theme.of(context).colorScheme.background)),
+                      color: Theme.of(context).colorScheme.surface)),
               child: Container(
                 padding:
                     const EdgeInsets.fromLTRB(padding, 0, padding, padding),
@@ -253,7 +260,7 @@ class _AddressBookState extends State<AddressBook> {
           )),
       underline: Container(
         height: 0.7,
-        color: Theme.of(context).dividerColor.withOpacity(0.1),
+        color: Theme.of(context).dividerColor.withValues(alpha: .1),
       ),
       menuItemStyleData: menuItemStyleData,
       items: items,
@@ -786,7 +793,7 @@ class AddressBookTag extends StatelessWidget {
             decoration: BoxDecoration(
                 color: tags.contains(name)
                     ? gFFI.abModel.getCurrentAbTagColor(name)
-                    : Theme.of(context).colorScheme.background,
+                    : Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(4)),
             margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
             padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 6.0),

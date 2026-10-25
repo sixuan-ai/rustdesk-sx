@@ -17,6 +17,7 @@ import 'package:flutter_hbb/models/peer_model.dart';
 import '../../common.dart';
 import '../widgets/companion_connection_surface.dart';
 import '../widgets/companion_device_widgets.dart';
+import '../../common/companion_theme.dart';
 import '../../common/formatter/id_formatter.dart';
 import '../../common/widgets/peer_tab_page.dart';
 import '../../common/widgets/autocomplete.dart';
@@ -68,6 +69,9 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   @override
   Widget build(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
+    final readyColor = CompanionTheme.isDark(context)
+        ? CompanionTheme.mint
+        : CompanionTheme.mintDeep;
     startServiceWidget() => Offstage(
           offstage: !_svcStopped.value,
           child: InkWell(
@@ -90,20 +94,9 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
               children: [
                 Text(', ', style: TextStyle(fontSize: em)),
                 Flexible(
-                  child: InkWell(
+                  child: CompanionPublicServerHint(
+                    text: translate('setup_server_tip'),
                     onTap: onUsePublicServerGuide,
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            translate('setup_server_tip'),
-                            style: TextStyle(
-                                decoration: TextDecoration.underline,
-                                fontSize: em),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 )
               ],
@@ -123,8 +116,8 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
                         stateGlobal.svcStatus.value == SvcStatus.connecting
                     ? kColorWarn
                     : (stateGlobal.svcStatus.value == SvcStatus.ready
-                        ? Color.fromARGB(255, 50, 190, 166)
-                        : Color.fromARGB(255, 224, 79, 95)),
+                        ? readyColor
+                        : CompanionTheme.coral),
               ),
             ).marginSymmetric(horizontal: em),
             if (isIncomingOnly)
@@ -320,12 +313,12 @@ class _ConnectionPageState extends State<ConnectionPage>
             Align(
               alignment: Alignment.centerLeft,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 980),
+                constraints: const BoxConstraints(maxWidth: 1040),
                 child: CompanionConnectionSurface(
                   child: _buildRemoteIDTextField(context),
                 ),
               ),
-            ).marginOnly(top: 20, right: 20, bottom: 20),
+            ).marginOnly(top: 24, right: 24, bottom: 18),
             Expanded(child: PeerTabPage()),
           ],
         ).paddingOnly(left: 20.0)),
@@ -355,11 +348,11 @@ class _ConnectionPageState extends State<ConnectionPage>
   Widget _buildRemoteIDTextField(BuildContext context) {
     var w = Container(
       width: 320 + 20 * 2,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
       child: Ink(
         child: Column(
           children: [
-            getConnectionPageTitle(context, false).marginOnly(bottom: 15),
+            getConnectionPageTitle(context, false).marginOnly(bottom: 18),
             Row(
               children: [
                 Expanded(
@@ -429,21 +422,25 @@ class _ConnectionPageState extends State<ConnectionPage>
                           style: const TextStyle(
                             fontFamily: 'MiSans',
                             fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: .8,
                             height: 1.4,
                           ),
                           maxLines: 1,
-                          cursorColor:
-                              Theme.of(context).textTheme.titleLarge?.color,
+                          cursorColor: Theme.of(context).colorScheme.primary,
                           decoration: InputDecoration(
                               filled: true,
-                              prefixIcon:
-                                  const Icon(Icons.computer_rounded, size: 20),
+                              prefixIcon: Icon(Icons.computer_rounded,
+                                  size: 20,
+                                  color: Theme.of(context).colorScheme.primary),
+                              prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 46, minHeight: 46),
                               counterText: '',
                               hintText: _idInputFocused.value
                                   ? null
                                   : translate('Enter Remote ID'),
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 13)),
+                                  horizontal: 16, vertical: 15)),
                           controller: fieldTextEditingController,
                           inputFormatters: [IDTextInputFormatter()],
                           onChanged: (v) {
@@ -478,22 +475,26 @@ class _ConnectionPageState extends State<ConnectionPage>
                       alignment: Alignment.topLeft,
                       child: Container(
                           decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
+                              ...CompanionTheme.glow(CompanionTheme.violet,
+                                  blur: 30, y: 10, alpha: .30),
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 5,
-                                spreadRadius: 1,
+                                color: Colors.black.withValues(alpha: .18),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
                               ),
                             ],
                           ),
                           child: ClipRRect(
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: BorderRadius.circular(16),
                               child: Material(
-                                elevation: 4,
+                                color: Theme.of(context).colorScheme.surface,
+                                elevation: 0,
                                 child: ConstrainedBox(
                                   constraints: BoxConstraints(
                                     maxHeight: maxHeight,
-                                    maxWidth: 319,
+                                    maxWidth: 359,
                                   ),
                                   child: _allPeersLoader.peers.isEmpty &&
                                           !_allPeersLoader.isPeersLoaded
@@ -505,8 +506,8 @@ class _ConnectionPageState extends State<ConnectionPage>
                                             ),
                                           ))
                                       : Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 5),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 5),
                                           child: ListView(
                                             children: options
                                                 .map((peer) =>
@@ -528,32 +529,58 @@ class _ConnectionPageState extends State<ConnectionPage>
               padding: const EdgeInsets.only(top: 13.0),
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 44.0,
+                  child: Container(
+                    height: 46.0,
+                    decoration: BoxDecoration(
+                      gradient: CompanionTheme.primaryGradient(
+                          CompanionTheme.isDark(context)),
+                      borderRadius: CompanionTheme.pill,
+                      boxShadow: CompanionTheme.glow(CompanionTheme.violet,
+                          blur: 20, y: 7, alpha: .30),
+                    ),
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        elevation: 0,
+                        foregroundColor: CompanionTheme.isDark(context)
+                            ? CompanionTheme.cosmicDeep
+                            : Colors.white,
+                      ),
                       onPressed: () {
                         onConnect();
                       },
-                      child: Text(translate("Connect")),
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(translate("Connect")),
+                            const SizedBox(width: 7),
+                            const Icon(Icons.arrow_forward_rounded, size: 17),
+                          ]),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Tooltip(
                   message: translate('More'),
                   child: Container(
-                    height: 44.0,
-                    width: 44.0,
+                    height: 46.0,
+                    width: 46.0,
                     decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surface
+                          .withValues(alpha: .72),
                       border: Border.all(color: Theme.of(context).dividerColor),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(999),
                     ),
                     child: Center(
                       child: StatefulBuilder(
                         builder: (context, setState) {
                           var offset = Offset(0, 0);
                           return Obx(() => InkWell(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(999),
                                 child: SizedBox.expand(
                                   child: Center(
                                       child: _menuOpen.value
