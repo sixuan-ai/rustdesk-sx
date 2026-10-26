@@ -657,7 +657,8 @@ where
     m.sender = Some("org.freedesktop.portal.Desktop".into());
     m.interface = Some("org.freedesktop.portal.Request".into());
     conn.add_match(m, move |r: OrgFreedesktopPortalRequestResponse, c, m| {
-        debug!("Response from DBus: response: {:?}, message: {:?}", r, m);
+        // Start results contain bearer restore tokens; never log the message body.
+        trace!("Portal response: status={}, result_keys={:?}", r.response, r.results.keys().collect::<Vec<_>>());
         match r.response {
             0 => {}
             1 => {
@@ -796,7 +797,23 @@ fn streams_from_response(response: OrgFreedesktopPortalRequestResponse) -> Vec<P
 static mut INIT: bool = false;
 const RESTORE_TOKEN: &str = "restore_token";
 const RESTORE_TOKEN_CONF_KEY: &str = "wayland-restore-token";
+const REMOTE_DESKTOP_RESTORE_TOKEN_CONF_KEY: &str = "wayland-remote-desktop-restore-token";
 const PIPEWIRE_DISPLAY_OFFSET_CONF_KEY: &str = "wayland-pipewire-display-offset";
+
+fn supports_persistence(screen_cast: bool, version: u32) -> bool {
+    version >= if screen_cast { 4 } else { 2 }
+}
+
+fn remote_desktop_persistence_options(supported: bool, token: String) -> PropMap {
+    let mut options: PropMap = HashMap::new();
+    if supported {
+        options.insert("persist_mode".into(), Variant(Box::new(2u32)));
+        if !token.is_empty() {
+            options.insert(RESTORE_TOKEN.into(), Variant(Box::new(token)));
+        }
+    }
+    options
+}
 
 pub fn get_available_cursor_modes() -> Result<u32, dbus::Error> {
     let conn = SyncConnection::new_session()?;
@@ -842,12 +859,15 @@ pub fn request_remote_desktop(
         Variant(Box::new(create_session_handle_token.to_string())),
     );
 
-    let mut is_support_restore_token = false;
-    if let Ok(version) = screencast_portal::version(&portal) {
-        if version >= 4 {
-            is_support_restore_token = true;
-        }
-    }
+    let screen_cast = is_server_running();
+    let version = if screen_cast {
+        screencast_portal::version(&portal)
+    } else {
+        remote_desktop_portal::version(&portal)
+    };
+    let is_support_restore_token = version
+        .map(|version| supports_persistence(screen_cast, version))
+        .unwrap_or(false);
 
     // The following code may be improved.
     // https://flatpak.github.io/xdg-desktop-portal/#:~:text=To%20avoid%20a%20race%20condition
@@ -957,7 +977,7 @@ fn on_create_session_response(
         // See `is_server_running()` to understand the following code.
         if is_server_running() {
             if is_support_restore_token {
-                let restore_token = config::LocalConfig::get_option(RESTORE_TOKEN_CONF_KEY);
+                let restore_token = config::LocalConfig::get_option_from_file(RESTORE_TOKEN_CONF_KEY);
                 if !restore_token.is_empty() {
                     args.insert(RESTORE_TOKEN.to_string(), Variant(Box::new(restore_token)));
                 }
@@ -1001,8 +1021,11 @@ fn on_create_session_response(
                 .select_sources(ses.clone(), args)
                 .map_err(|e| DBusError(dbus_stage_err("select-sources", &e)))?;
         } else {
-            // TODO: support persist_mode for remote_desktop_portal
-            // https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html
+            // Combined input/capture sessions persist through SelectDevices, not SelectSources.
+            args.extend(remote_desktop_persistence_options(
+                is_support_restore_token,
+                config::LocalConfig::get_option_from_file(REMOTE_DESKTOP_RESTORE_TOKEN_CONF_KEY),
+            ));
 
             let select_devices_handle_token = "u2";
             args.insert(
@@ -1141,17 +1164,20 @@ fn on_start_response(
     move |r: OrgFreedesktopPortalRequestResponse, c, _| {
         let portal = get_portal(c);
         // See `is_server_running()` to understand the following code.
-        if is_server_running() {
-            if is_support_restore_token {
-                if let Some(restore_token) = r.results.get(RESTORE_TOKEN) {
-                    if let Some(restore_token) = restore_token.as_str() {
-                        config::LocalConfig::set_option(
-                            RESTORE_TOKEN_CONF_KEY.to_owned(),
-                            restore_token.to_owned(),
-                        );
-                    }
-                }
-            }
+        if is_support_restore_token {
+            let key = if is_server_running() {
+                RESTORE_TOKEN_CONF_KEY
+            } else {
+                REMOTE_DESKTOP_RESTORE_TOKEN_CONF_KEY
+            };
+            // Tokens are consumed on restore. A nonpersistent grant must clear the old value.
+            let token = r.results.get(RESTORE_TOKEN).and_then(|v| v.as_str()).unwrap_or_default();
+            config::LocalConfig::set_option(key.to_owned(), token.to_owned());
+            let saved = config::LocalConfig::get_option_from_file(key) == token;
+            hbb_common::throttled_log!(Duration::from_secs(1), info,
+                "wayland_portal_authorization kind={} persistent={} storage_matches={}",
+                if is_server_running() { "screencast" } else { "remote-desktop" },
+                !token.is_empty(), saved);
         }
 
         streams
@@ -1222,7 +1248,7 @@ pub fn get_capturables() -> Result<Vec<PipeWireCapturable>, Box<dyn Error>> {
 // Otherwise, we have to use remote_desktop_portal's input method.
 //
 // `screencast_portal` supports restore_token and persist_mode if the version is greater than or equal to 4.
-// `remote_desktop_portal` does not support restore_token and persist_mode.
+// `remote_desktop_portal` supports restore_token and persist_mode from version 2.
 pub(crate) fn is_server_running() -> bool {
     let v = IS_SERVER_RUNNING.load(Ordering::SeqCst);
     if v > 0 {
@@ -1776,7 +1802,26 @@ fn sort_streams(
 
 #[cfg(test)]
 mod tests {
-    use super::stage_err;
+    use super::{remote_desktop_persistence_options, stage_err, supports_persistence};
+
+    #[test]
+    fn persistence_checks_the_selected_portal_version() {
+        assert!(!supports_persistence(true, 3));
+        assert!(supports_persistence(true, 4));
+        assert!(!supports_persistence(false, 1));
+        assert!(supports_persistence(false, 2));
+        assert!(remote_desktop_persistence_options(false, "unused".into()).is_empty());
+    }
+
+    #[test]
+    fn remote_desktop_requests_a_persistent_grant_then_restores_it() {
+        let initial = remote_desktop_persistence_options(true, String::new());
+        assert_eq!(initial["persist_mode"].0.as_u64(), Some(2));
+        assert!(!initial.contains_key("restore_token"));
+        let restored = remote_desktop_persistence_options(true, "opaque-test-token".into());
+        assert_eq!(restored["persist_mode"].0.as_u64(), Some(2));
+        assert_eq!(restored["restore_token"].0.as_str(), Some("opaque-test-token"));
+    }
 
     #[test]
     fn stage_err_keeps_the_detail_safe_for_a_placeholder() {
