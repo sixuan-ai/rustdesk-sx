@@ -2578,6 +2578,33 @@ impl Drop for SessionIdleInhibit {
 
 pub struct WakeLock(Option<keepawake::AwakeHandle>, Option<SessionIdleInhibit>);
 
+/// GNOME's idle inhibitor prevents future blanking, but does not wake an output
+/// that was already powered off. This changes display power only, never the lock.
+pub fn wake_wayland_display() {
+    use dbus::blocking::{stdintf::org_freedesktop_dbus::Properties, Connection};
+
+    if *IS_X11 {
+        return;
+    }
+    let wake = || -> ResultType<()> {
+        let connection = Connection::new_session()?;
+        let proxy = connection.with_proxy(
+            "org.gnome.Mutter.DisplayConfig",
+            "/org/gnome/Mutter/DisplayConfig",
+            Duration::from_millis(1500),
+        );
+        let mode: i32 = proxy.get("org.gnome.Mutter.DisplayConfig", "PowerSaveMode")?;
+        if mode > 0 {
+            proxy.set("org.gnome.Mutter.DisplayConfig", "PowerSaveMode", 0i32)?;
+        }
+        Ok(())
+    };
+    if let Err(err) = wake() {
+        // Other Wayland compositors need their own wake implementation.
+        log::trace!("Wayland display wake unavailable: {err}");
+    }
+}
+
 impl WakeLock {
     pub fn new(display: bool, idle: bool, sleep: bool) -> Self {
         match keepawake::Builder::new()

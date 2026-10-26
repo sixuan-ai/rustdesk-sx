@@ -504,7 +504,7 @@ fn drm_wake_displays(reason: &str) -> bool {
         log::warn!("drm: display wake ({reason}) failed to emit: {err}");
         return false;
     }
-    log::info!("drm: no display was scanning out ({reason}); asked the compositor to wake up");
+    hbb_common::throttled_log!(DRM_WAKE_MIN_GAP, info, "drm: display wake requested ({reason})");
     true
 }
 
@@ -1116,6 +1116,13 @@ fn drm_capture_worker(
     const MAX_STALLED: u32 = 150;
 
     let t_conn = std::time::Instant::now();
+
+    // GNOME can keep an active CRTC while its locked screen shield is blank.
+    // Enumeration alone cannot detect that case; activity wakes it without unlocking.
+    #[cfg(feature = "drm-wake")]
+    if hbb_common::config::Config::get_bool_option(OPTION_ENABLE_DRM_DISPLAY_WAKE) {
+        drm_wake_displays("an authorized capture consumer connected");
+    }
 
     // Enumerate FRESH rather than serve the cache: a cached display may no longer be driven.
     let displays = drm_enumerate_settled("a consumer connected");

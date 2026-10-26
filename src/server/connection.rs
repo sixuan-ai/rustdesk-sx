@@ -6616,6 +6616,10 @@ fn start_wakelock_thread() -> std::sync::mpsc::Sender<(usize, usize)> {
                                 }
                             }
                         } else {
+                            #[cfg(target_os = "linux")]
+                            if remote_count > 0 {
+                                crate::platform::linux::wake_wayland_display();
+                            }
                             if cfg!(target_os = "linux") {
                                 display = true;
                             }

@@ -67,6 +67,11 @@ test -s flutter/lib/generated_bridge.dart
 sed -i 's/ffi.NativeFunction<ffi.Bool Function(DartPort/ffi.NativeFunction<ffi.Uint8 Function(DartPort/g' \
   flutter/lib/generated_bridge.dart
 features=flutter,linux-pkg-config,unix-file-copy-paste
+if [[ "${RUSTDESK_DEV_DRM:-0}" == 1 ]]; then
+  # Match build.py's unattended variant; runtime loading still requires the
+  # pinned library in the root-owned /usr/lib/rustdesk directory on the host.
+  features+=,drm,drm-wake
+fi
 if [[ "${RUSTDESK_DEV_HWCODEC:-0}" == 1 ]]; then
   pkg-config --exists libavcodec libavutil libavformat libdrm
   hwcodec_cargo_home="$(python3 res/dev/prepare_hwcodec.py)"
