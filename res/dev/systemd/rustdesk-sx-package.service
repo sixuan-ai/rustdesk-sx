@@ -1,0 +1,16 @@
+# Use only when no rustdesk.service already exists.
+[Unit]
+Description=RustDesk SX unattended remote desktop
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/lib/rustdesk-sx/rustdesk --service
+Restart=on-failure
+KillMode=mixed
+TimeoutStopSec=15
+Environment=PULSE_LATENCY_MSEC=60 PIPEWIRE_LATENCY=1024/48000
+
+[Install]
+WantedBy=multi-user.target
