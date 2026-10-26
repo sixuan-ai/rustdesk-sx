@@ -4,6 +4,7 @@
 - 二次开发维护：**转瞬之澜（思玄）**。
 - GitHub 账号：[Max Stark（@sixuan-ai）](https://github.com/sixuan-ai)。
 - 上游项目：[rustdesk/rustdesk](https://github.com/rustdesk/rustdesk)。
+- 思玄版当前版本：`2.1.0`，使用独立版本号，不再沿用上游版本加 SX 日期后缀。
 - 上游稳定基线：`1.5.0`，提交 `fada664df7a294d1d1a9ca3e7cd3637069122f17`。
 - 发布主分支：`main`；持续开发分支：`codex/stable-1.5.0-dev`。
 - 说明日期：2026-10-23。

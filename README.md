@@ -10,17 +10,17 @@
 
 ## 下载
 
-当前发布：[`v1.5.0-sx.20261026.1`](https://github.com/sixuan-ai/rustdesk-sx/releases/tag/v1.5.0-sx.20261026.1)，更新日期 **2026-10-26**。
+当前发布：[`v2.1.0`](https://github.com/sixuan-ai/rustdesk-sx/releases/tag/v2.1.0)，更新日期 **2026-10-26**。
 
 | 文件 | 用途 |
 | --- | --- |
-| [Ubuntu 26.04 安装包（.deb）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261026.1/rustdesk-sx_1.5.0%2Bsx.20261026.1_amd64.deb) | 安装后通过桌面入口或 `rustdesk-sx` 启动 |
-| [Linux x86_64 便携包（.tar.gz）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261026.1/rustdesk-sx-1.5.0%2Bsx.20261026.1-linux-x86_64-ubuntu26.04.tar.gz) | 解压后通过 `run.sh` 启动 |
-| [SHA256SUMS](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261026.1/SHA256SUMS) / [BUILD-INFO.json](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v1.5.0-sx.20261026.1/BUILD-INFO.json) | 文件校验、精确源码提交、编译特性与运行依赖 |
+| [Ubuntu 26.04 安装包（.deb）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/rustdesk-sx_2.1.0_amd64.deb) | 安装后通过桌面入口或 `rustdesk-sx` 启动 |
+| [Linux x86_64 便携包（.tar.gz）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04.tar.gz) | 解压后通过 `run.sh` 启动 |
+| [SHA256SUMS](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/SHA256SUMS) / [BUILD-INFO.json](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/BUILD-INFO.json) | 文件校验、精确源码提交、编译特性与运行依赖 |
 
 **两个包均面向 Ubuntu 26.04 x86_64，依赖 glibc ≥ 2.43、FFmpeg 8 和对应系统库，不适用于 Ubuntu 24.04。** 便携包也依赖系统库。Windows、macOS、ARM 及其他 Linux 发行版未提供此次验证包。
 
-发布包对应源码标签；`main` 上的后续提交不会自动更新已发布的二进制。软件内部基础版本号仍为 `1.5.0`，思玄版发行号以发布页面、包名和构建信息为准。
+发布包对应源码标签；`main` 上的后续提交不会自动更新已发布的二进制。思玄版自本次起使用独立版本号 **`2.1.0`**，应用显示、安装包和发行标签统一；上游基线仍记录为 RustDesk 1.5.0。
 
 ## 这一版做了什么
 
@@ -49,13 +49,13 @@
 下载 `.deb` 后，在下载目录执行：
 
 ```bash
-sudo apt install ./rustdesk-sx_1.5.0+sx.20261026.1_amd64.deb
+sudo apt install ./rustdesk-sx_2.1.0_amd64.deb
 rustdesk-sx
 ```
 
 安装包使用独立的程序目录与桌面入口，不安装、替换或启停现有 RustDesk 系统服务。**应用仍使用 RustDesk 的用户配置位置**，已有账号和设备设置可能共用，不应把独立安装路径理解为配置隔离。
 
-无人值守被控端需要主动启用系统服务，具体命令与回退步骤见包内 `README.zh-CN.txt` 和[本次发布记录](docs/releases/2026-10-26-unattended-linux-preview.md)。启用会重启现有 RustDesk 连接；屏幕唤醒后仍由用户输入系统密码，不会自动解锁。便携包推荐仅作客户端。
+无人值守被控端需要主动启用系统服务，具体命令与回退步骤见包内 `README.zh-CN.txt` 和[本次发布记录](docs/releases/2026-10-26-version-2.1.0.md)。启用会重启现有 RustDesk 连接；屏幕唤醒后仍由用户输入系统密码，不会自动解锁。便携包推荐仅作客户端。
 
 卸载应用：`sudo apt remove rustdesk-sx`；启用过无人值守服务的用户须先按发布记录回退服务配置。这不会自动清除用户配置。
 
@@ -64,8 +64,8 @@ rustdesk-sx
 下载 `.tar.gz` 后执行：
 
 ```bash
-tar -xzf rustdesk-sx-1.5.0+sx.20261026.1-linux-x86_64-ubuntu26.04.tar.gz
-cd rustdesk-sx-1.5.0+sx.20261026.1-linux-x86_64-ubuntu26.04
+tar -xzf rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04.tar.gz
+cd rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04
 ./run.sh
 ```
 
@@ -88,10 +88,10 @@ cd rustdesk-sx-1.5.0+sx.20261026.1-linux-x86_64-ubuntu26.04
 - 当前发布包已完成优化 Release 构建、随包 ELF 动态依赖检查、解压后的版本入口与校验和检查，以及当前主机的 apt 模拟安装。
 - Linux Debug / Release 的 4K H.265 硬件链路有此前的实测记录；**本次打包未重新执行完整图形界面、远端键鼠或多屏回归**。
 - **持续 4K60 尚未达标**；提交回调帧率不等于合成器实际呈现帧率。双屏同时稳定 4K60、长期低显存及弱网画质仍需继续验证。
-- 本包的 DRM/DRM-wake 核心与抓屏库和 OMEN 实测版本一致，已确认熄屏、锁屏手动登录和服务重启恢复；注销 GDM、整机重启、挂起恢复及其他硬件未验证。Debug 的“连接中”呈现问题尚未定位，发布使用 Release。仍未完全去除 X11 依赖。
+- 2.1.0 沿用此前 OMEN 实测的 DRM/DRM-wake 实现和固定抓屏库，已确认熄屏、锁屏手动登录和服务重启恢复；注销 GDM、整机重启、挂起恢复及其他硬件未验证。Debug 的“连接中”呈现问题尚未定位，发布使用 Release。仍未完全去除 X11 依赖。
 - 公共包使用系统 GTK，未包含开发机针对 GTK 3.24.52 的私有 AT-SPI 修复；相关系统问题可能仍影响图形交互。
 
-具体平台、测试负载与证据分别见 [发布验证记录](docs/releases/2026-10-26-unattended-linux-preview.md)和[性能对照记录](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)。
+具体平台、测试负载与证据分别见 [发布验证记录](docs/releases/2026-10-26-version-2.1.0.md)和[性能对照记录](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)。
 
 ## 源码构建
 
@@ -116,7 +116,7 @@ RUSTDESK_DEV_HWCODEC=1 RUSTDESK_DEV_BUILD_MODE=release res/dev/build_linux.sh
 RUSTDESK_DEV_BUILD_MODE=release res/dev/run_linux.sh
 ```
 
-硬件编解码路径依赖系统 FFmpeg 开发库；省略 `RUSTDESK_DEV_HWCODEC=1` 可构建不启用该可选路径的版本。默认并发 2，上限 6。产物位于 `flutter/build/linux/x64/{debug,release}/bundle/`；开发启动器与可分发安装包用途不同，无人值守构建还需 `RUSTDESK_DEV_DRM=1` 及固定版本 libdrmtap；打包入口见 [发布记录](docs/releases/2026-10-26-unattended-linux-preview.md)。
+硬件编解码路径依赖系统 FFmpeg 开发库；省略 `RUSTDESK_DEV_HWCODEC=1` 可构建不启用该可选路径的版本。默认并发 2，上限 6。产物位于 `flutter/build/linux/x64/{debug,release}/bundle/`；开发启动器与可分发安装包用途不同，无人值守构建还需 `RUSTDESK_DEV_DRM=1` 及固定版本 libdrmtap；打包入口见 [发布记录](docs/releases/2026-10-26-version-2.1.0.md)。
 
 ## 开发记录
 
@@ -128,7 +128,7 @@ RUSTDESK_DEV_BUILD_MODE=release res/dev/run_linux.sh
 | [原生 Wayland](docs/development-native-wayland-2026-10-23.md) | Linux 客户端启动和运行验证 |
 | [剪贴板与中文输入](docs/development-wayland-text-2026-10-23.md) | 文本路径、输入法与实际验收 |
 | [最新性能对照](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md) | Debug / Release、采集节拍与当前 4K60 限制 |
-| [无人值守预览包发布](docs/releases/2026-10-26-unattended-linux-preview.md) | 编译、依赖、打包、验证和回滚 |
+| [无人值守预览包发布](docs/releases/2026-10-26-version-2.1.0.md) | 编译、依赖、打包、验证和回滚 |
 
 后续重点是继续完善桌面交互、减少 X11 依赖、定位高分辨率吞吐瓶颈，并逐步扩大平台与安装验证范围。反馈问题时，请说明系统/桌面会话、显卡、软件版本、连接方式和复现步骤；不要提交密码、令牌或完整用户配置。
 

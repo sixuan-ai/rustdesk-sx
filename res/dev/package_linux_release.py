@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -55,8 +56,11 @@ def main():
     parser.add_argument('--drmtap-source', type=Path)
     parser.add_argument('--drmtap-library', type=Path)
     args = parser.parse_args()
+    app_version = tomllib.loads((ROOT / 'Cargo.toml').read_text())['package']['version']
     if not re.fullmatch(r'[0-9][A-Za-z0-9.+~-]*', args.version):
         parser.error('Invalid release version')
+    if args.version != app_version:
+        parser.error(f'Package version must match application version {app_version}')
     if platform.machine() != 'x86_64':
         parser.error('This packaging path currently targets Linux x86_64 only')
     if ((args.unattended and not (args.drmtap_source and args.drmtap_library))
@@ -148,6 +152,7 @@ exec "$app_dir/rustdesk" "$@"
         manifest = {
             'project': 'RustDesk · 思玄二次开发版', 'maintainer': 'Max Stark / sixuan-ai',
             'release_version': args.version, 'upstream_version': '1.5.0',
+            'app_version': app_version,
             'source_commit': commit, 'source_url': source,
             'target': 'Linux x86_64 / Ubuntu 26.04',
             'build_host_os': platform.freedesktop_os_release().get('PRETTY_NAME'),
@@ -161,8 +166,8 @@ exec "$app_dir/rustdesk" "$@"
         if args.unattended:
             manifest['build_features'] += ['drm', 'drm-wake']
             manifest['libdrmtap'] = drmtap
-            manifest['verification'] = 'Package ELF/--version checks; compare core_sha256 with the separate OMEN runtime verification record'
-            manifest['runtime_validation_reference'] = source + '/docs/incidents/2026-10-26-wayland-screen-wake.md'
+            manifest['verification'] = 'Package ELF/--version checks; remote-session verification scope is recorded separately'
+            manifest['runtime_validation_reference'] = source + '/docs/releases/'
         (portable / 'BUILD-INFO.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
         (portable / 'README.zh-CN.txt').write_text(f'''RustDesk · 思玄二次开发版 {args.version}
 维护：转瞬之澜（思玄） / Max Stark（sixuan-ai）
@@ -183,7 +188,7 @@ Portal 被控路径首次需通过系统共享选择器授权；勾选记住后�
 持续 4K60 尚未达标。
 本包使用系统 GTK；未打包开发机的 GTK 3.24.52 AT-SPI 私有修复，
 系统存在该问题时仍可能受影响，详见源码中的 res/dev/build_gtk3_a11y_fix.sh。
-界面的基础版本号仍为 1.5.0，衍生发布版本和精确源码提交见 BUILD-INFO.json。
+应用和安装包版本统一为 {app_version}，精确源码提交见 BUILD-INFO.json。
 许可：AGPL-3.0；MiSans、Flutter 等各保留原许可，见 licenses/ 与 data/flutter_assets/NOTICES.Z。
 完整构建：按源码开发文档获取子模块和依赖，然后执行：
 RUSTDESK_DEV_HWCODEC=1 RUSTDESK_DEV_BUILD_MODE=release RUSTDESK_BUILD_JOBS=2 res/dev/build_linux.sh
@@ -218,7 +223,7 @@ meson compile -C build -j2
 打包增加 --unattended --drmtap-source <固定提交源码目录> --drmtap-library <该目录/build/libdrmtap.so.0.5.8>。
 ''')
         smoke = run(str(launcher), '--version', env=env, timeout=30)
-        if '1.5.0' not in smoke:
+        if smoke != app_version:
             raise RuntimeError('Unexpected Release --version result')
         # Developer umasks and Meson outputs may be group-writable. The root
         # service must load a read-only installed payload, independent of them.
