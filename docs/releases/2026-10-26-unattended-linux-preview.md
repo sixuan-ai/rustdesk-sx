@@ -56,6 +56,9 @@ are resolved, including versioned `.so.0`; dynamically loaded EGL/GLES are
 explicit Debian dependencies. License and source attribution for libdrmtap are
 included alongside existing AGPL/MiSans/Flutter notices. No configuration, tokens,
 passwords, user logs or private screenshots are copied.
+Staged payload permissions clear group/other write bits; Debian archive entries
+are root-owned. This also prevents a developer umask from making installed
+system directories or the privileged library group-writable.
 
 Artifacts: `.deb`, `.tar.gz`, `BUILD-INFO.json`, `README.zh-CN.txt`, `SHA256SUMS`.
 The `.deb` includes the root-only loader's fixed library location

@@ -220,6 +220,11 @@ meson compile -C build -j2
         smoke = run(str(launcher), '--version', env=env, timeout=30)
         if '1.5.0' not in smoke:
             raise RuntimeError('Unexpected Release --version result')
+        # Developer umasks and Meson outputs may be group-writable. The root
+        # service must load a read-only installed payload, independent of them.
+        for path in [portable, *portable.rglob('*')]:
+            if not path.is_symlink():
+                path.chmod(path.stat().st_mode & ~0o022)
         deb_root = work / 'deb'
         payload = deb_root / 'usr/lib/rustdesk-sx'
         shutil.copytree(portable, payload, symlinks=True)
@@ -241,6 +246,9 @@ meson compile -C build -j2
         control.mkdir()
         size = sum(p.stat().st_size for p in deb_root.rglob('*') if p.is_file()) // 1024
         (control / 'control').write_text(f'Package: rustdesk-sx\nVersion: {args.version}\nArchitecture: amd64\nMaintainer: Max Stark <sixuan-ai@users.noreply.github.com>\nSection: net\nPriority: optional\nHomepage: https://github.com/sixuan-ai/rustdesk-sx\nInstalled-Size: {size}\nDepends: {depends}\nDescription: RustDesk SX desktop client for Ubuntu 26.04\n Maintained by sixuan-ai. Does not install or modify system services.\n')
+        for path in [deb_root, *deb_root.rglob('*')]:
+            if not path.is_symlink():
+                path.chmod(path.stat().st_mode & ~0o022)
         subprocess.run(['dpkg-deb', '--root-owner-group', '--build', str(deb_root), str(deb)], check=True)
         with tarfile.open(archive, 'w:gz') as tar:
             tar.add(portable, arcname=name)
