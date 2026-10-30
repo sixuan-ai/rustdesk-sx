@@ -149,6 +149,7 @@ exec "$app_dir/rustdesk" "$@"
         if args.unattended:
             # EGL is loaded dynamically, so dpkg-shlibdeps cannot discover it.
             depends += ', libegl1, libgles2'
+        flutter_sdk = json.loads(run(str(args.flutter_root / 'bin/flutter'), '--version', '--machine'))
         manifest = {
             'project': 'RustDesk · 思玄二次开发版', 'maintainer': 'Max Stark / sixuan-ai',
             'release_version': args.version, 'upstream_version': '1.5.0',
@@ -157,6 +158,8 @@ exec "$app_dir/rustdesk" "$@"
             'target': 'Linux x86_64 / Ubuntu 26.04',
             'build_host_os': platform.freedesktop_os_release().get('PRETTY_NAME'),
             'rustc': run('rustc', '--version'),
+            'flutter_sdk': {key: flutter_sdk[key] for key in (
+                'frameworkVersion', 'frameworkRevision', 'engineRevision', 'dartSdkVersion', 'channel')},
             'submodules': run('git', 'submodule', 'status', '--recursive', cwd=ROOT).splitlines(),
             'build_features': ['flutter', 'linux-pkg-config', 'unix-file-copy-paste', 'hwcodec'],
             'core_sha256': hashlib.file_digest((portable / 'lib/librustdesk.so').open('rb'), 'sha256').hexdigest(),

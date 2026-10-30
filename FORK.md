@@ -4,7 +4,7 @@
 - 二次开发维护：**转瞬之澜（思玄）**。
 - GitHub 账号：[Max Stark（@sixuan-ai）](https://github.com/sixuan-ai)。
 - 上游项目：[rustdesk/rustdesk](https://github.com/rustdesk/rustdesk)。
-- 思玄版当前版本：`2.1.0`，使用独立版本号，不再沿用上游版本加 SX 日期后缀。
+- 思玄版当前版本：`2.1.1`，使用独立版本号，不再沿用上游版本加 SX 日期后缀。
 - 上游稳定基线：`1.5.0`，提交 `fada664df7a294d1d1a9ca3e7cd3637069122f17`。
 - 发布主分支：`main`；持续开发分支：`codex/stable-1.5.0-dev`。
 - 说明日期：2026-10-23。
@@ -34,7 +34,7 @@ git clone --recurse-submodules https://github.com/sixuan-ai/rustdesk-sx.git
 cd rustdesk-sx
 ```
 
-本分支最近验证环境为 Ubuntu 26.04.1／GNOME Wayland、Flutter 3.47.7、Rust 1.99.1。使用当前稳定 SDK，FRB 代码生成器 `1.80.1` 则须与本稳定基线的桥接 ABI 匹配。原生依赖、代码生成和隔离补丁的配置见 [Linux 构建记录](docs/development-linux-latest-stable-2026-10-23.md)。首次检出需生成被 Git 忽略的桥接文件：
+本分支最近验证环境为 Ubuntu 26.04.1／GNOME Wayland、Flutter 3.47.9、Rust 1.99.1。使用当前稳定 SDK，FRB 代码生成器 `1.80.1` 则须与本稳定基线的桥接 ABI 匹配。原生依赖、代码生成和隔离补丁的配置见 [Linux 构建记录](docs/development-linux-latest-stable-2026-10-23.md)。首次检出需生成被 Git 忽略的桥接文件：
 
 ```bash
 RUSTDESK_DEV_HWCODEC=1 res/dev/build_linux.sh --generate-bridge

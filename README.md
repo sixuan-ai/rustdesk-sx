@@ -10,17 +10,17 @@
 
 ## 下载
 
-当前发布：[`v2.1.0`](https://github.com/sixuan-ai/rustdesk-sx/releases/tag/v2.1.0)，更新日期 **2026-10-26**。
+当前发布：[`v2.1.1`](https://github.com/sixuan-ai/rustdesk-sx/releases/tag/v2.1.1)，更新日期 **2026-10-30**。
 
 | 文件 | 用途 |
 | --- | --- |
-| [Ubuntu 26.04 安装包（.deb）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/rustdesk-sx_2.1.0_amd64.deb) | 安装后通过桌面入口或 `rustdesk-sx` 启动 |
-| [Linux x86_64 便携包（.tar.gz）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04.tar.gz) | 解压后通过 `run.sh` 启动 |
-| [SHA256SUMS](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/SHA256SUMS) / [BUILD-INFO.json](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.0/BUILD-INFO.json) | 文件校验、精确源码提交、编译特性与运行依赖 |
+| [Ubuntu 26.04 安装包（.deb）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.1/rustdesk-sx_2.1.1_amd64.deb) | 安装后通过桌面入口或 `rustdesk-sx` 启动 |
+| [Linux x86_64 便携包（.tar.gz）](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.1/rustdesk-sx-2.1.1-linux-x86_64-ubuntu26.04.tar.gz) | 解压后通过 `run.sh` 启动 |
+| [SHA256SUMS](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.1/SHA256SUMS) / [BUILD-INFO.json](https://github.com/sixuan-ai/rustdesk-sx/releases/download/v2.1.1/BUILD-INFO.json) | 文件校验、精确源码提交、编译特性与运行依赖 |
 
 **两个包均面向 Ubuntu 26.04 x86_64，依赖 glibc ≥ 2.43、FFmpeg 8 和对应系统库，不适用于 Ubuntu 24.04。** 便携包也依赖系统库。Windows、macOS、ARM 及其他 Linux 发行版未提供此次验证包。
 
-发布包对应源码标签；`main` 上的后续提交不会自动更新已发布的二进制。思玄版自本次起使用独立版本号 **`2.1.0`**，应用显示、安装包和发行标签统一；上游基线仍记录为 RustDesk 1.5.0。
+发布包对应源码标签；`main` 上的后续提交不会自动更新已发布的二进制。思玄版自本次起使用独立版本号 **`2.1.1`**，应用显示、安装包和发行标签统一；上游基线仍记录为 RustDesk 1.5.0。
 
 ## 这一版做了什么
 
@@ -49,7 +49,7 @@
 下载 `.deb` 后，在下载目录执行：
 
 ```bash
-sudo apt install ./rustdesk-sx_2.1.0_amd64.deb
+sudo apt install ./rustdesk-sx_2.1.1_amd64.deb
 rustdesk-sx
 ```
 
@@ -64,8 +64,8 @@ rustdesk-sx
 下载 `.tar.gz` 后执行：
 
 ```bash
-tar -xzf rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04.tar.gz
-cd rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04
+tar -xzf rustdesk-sx-2.1.1-linux-x86_64-ubuntu26.04.tar.gz
+cd rustdesk-sx-2.1.1-linux-x86_64-ubuntu26.04
 ./run.sh
 ```
 
@@ -80,9 +80,9 @@ cd rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04
 
 底部的 **ID 服务器状态**不代表 Tailscale/IP 直连是否可用；等待被控端选择共享屏幕，也不应直接判断为客户端卡死。Tailscale 组网不会替代 RustDesk 认证；Portal 授权与 DRM 系统服务是不同的被控路径。
 
-### 仅直连模式（main 源码）
+### 仅直连模式（2.1.1 起）
 
-适用于只通过 Tailscale/IP 或显式 `host:port` 连接、不使用 RustDesk ID／中继服务的场景。**当前下载页的 v2.1.0 包尚未包含此源码更新。**
+适用于只通过 Tailscale/IP 或显式 `host:port` 连接、不使用 RustDesk ID／中继服务的场景。**v2.1.1 下载包已包含此模式，默认关闭，须显式启用。**
 
 先退出 RustDesk，备份 `~/.config/rustdesk/RustDesk2.toml`，在已有 `[options]` 内加入（不要重复建立该节，也不要覆盖其他选项）：
 
@@ -99,16 +99,17 @@ direct-only = 'Y'
 
 ## 验证状态与已知限制
 
-截至 **2026-10-26**：
+截至 **2026-10-30**：
 
 - 2026-10-23 的源码 Flutter 测试 **144 项通过**，包含 UI、输入及其他现有模块的回归；这不是 144 项真实远控场景验收。
+- 2.1.1 保留已有优化，新增仅直连模式、直连设备状态和验证码焦点修复，并在 Linux 退出前清理主事件流；一次正常关闭／重启未复现旧崩溃，原生 Flutter 退出警告仍存在。
 - 当前发布包已完成优化 Release 构建、随包 ELF 动态依赖检查、解压后的版本入口与校验和检查，以及当前主机的 apt 模拟安装。
 - Linux Debug / Release 的 4K H.265 硬件链路有此前的实测记录；**本次打包未重新执行完整图形界面、远端键鼠或多屏回归**。
 - **持续 4K60 尚未达标**；提交回调帧率不等于合成器实际呈现帧率。双屏同时稳定 4K60、长期低显存及弱网画质仍需继续验证。
 - 2.1.0 沿用此前 OMEN 实测的 DRM/DRM-wake 实现和固定抓屏库，已确认熄屏、锁屏手动登录和服务重启恢复；注销 GDM、整机重启、挂起恢复及其他硬件未验证。Debug 的“连接中”呈现问题尚未定位，发布使用 Release。仍未完全去除 X11 依赖。
 - 公共包使用系统 GTK，未包含开发机针对 GTK 3.24.52 的私有 AT-SPI 修复；相关系统问题可能仍影响图形交互。
 
-具体平台、测试负载与证据分别见 [发布验证记录](docs/releases/2026-10-26-version-2.1.0.md)和[性能对照记录](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)。
+具体平台、测试负载与证据分别见 [2.1.1 发布记录](docs/releases/2026-10-30-version-2.1.1.md)和[性能对照记录](docs/incidents/2026-10-23-release-pipewire-clock-baseline.md)。
 
 ## 源码构建
 
