@@ -1091,16 +1091,12 @@ class CustomAlertDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // request focus
-    FocusScopeNode scopeNode = FocusScopeNode();
-    Future.delayed(Duration.zero, () {
-      if (!scopeNode.hasFocus) scopeNode.requestFocus();
-    });
+    // Let FocusScope retain its own node across rebuilds. Recreating/requesting
+    // it here lets a covered login dialog steal focus and select the code text.
     bool tabTapped = false;
     if (isAndroid) gFFI.invokeMethod("enable_soft_keyboard", true);
 
     return FocusScope(
-      node: scopeNode,
       autofocus: true,
       onKey: (node, key) {
         if (key.logicalKey == LogicalKeyboardKey.escape) {
@@ -1116,7 +1112,7 @@ class CustomAlertDialog extends StatelessWidget {
           return KeyEventResult.handled;
         } else if (key.logicalKey == LogicalKeyboardKey.tab) {
           if (key is RawKeyDownEvent) {
-            scopeNode.nextFocus();
+            node.nextFocus();
             tabTapped = true;
           }
           return KeyEventResult.handled;
@@ -2853,6 +2849,11 @@ Future<void> onActiveWindowChanged() async {
       debugPrintStack(label: "$err");
     } finally {
       debugPrint("Start closing RustDesk...");
+      if (isLinux) {
+        // Drop the Rust sink while Dart is still alive. Removal also waits for
+        // in-flight global posts, before GTK tears down the main Flutter engine.
+        await bind.stopGlobalEventStream(appType: kAppTypeMain);
+      }
       await windowManager.setPreventClose(false);
       await windowManager.close();
       if (isMacOS) {

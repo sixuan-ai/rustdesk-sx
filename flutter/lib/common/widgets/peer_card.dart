@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import '../../common.dart';
 import '../../common/companion_theme.dart';
+import '../direct_peer_status.dart';
 import '../../desktop/widgets/companion_device_widgets.dart';
 import '../../common/formatter/id_formatter.dart';
 import '../../models/peer_model.dart';
@@ -305,7 +306,7 @@ class _PeerCardState extends State<_PeerCard>
               note: _showNote(peer) ? peer.note : '',
               online: peer.online,
               statusLabel:
-                  translate(peer.online ? 'Online' : 'Not confirmed online'),
+                  translate(peerAvailabilityLabel(peer.id, peer.online)),
               platform: getPlatformImage(peer.platform, size: 22),
               action: checkBoxOrActionMoreLandscape(peer, isTile: false),
               foregroundDecoration: deco.value,

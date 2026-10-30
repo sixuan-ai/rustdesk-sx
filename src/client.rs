@@ -457,6 +457,10 @@ impl Client {
             ));
         }
 
+        if base::config::is_direct_only() {
+            bail!("Direct-only mode: enter a Tailscale/IP address or host:port");
+        }
+
         let other_server = interface.get_lch().read().unwrap().other_server.clone();
         let (peer, other_server, key, token) = if let Some((a, b, c)) = other_server.as_ref() {
             (a.as_ref(), b.as_ref(), c.as_ref(), "")
@@ -5324,6 +5328,8 @@ async fn hc_connection_(
 }
 
 pub mod peer_online {
+    mod direct;
+
     use hbb_common::{
         anyhow::bail,
         config::{Config, CONNECT_TIMEOUT, READ_TIMEOUT},
@@ -5335,6 +5341,11 @@ pub mod peer_online {
     };
 
     pub async fn query_online_states<F: FnOnce(Vec<String>, Vec<String>)>(ids: Vec<String>, f: F) {
+        if base::config::is_direct_only() || ids.iter().any(|id| direct::endpoint(id).is_some()) {
+            let (onlines, offlines) = direct::query(ids).await;
+            f(onlines, offlines);
+            return;
+        }
         let test = false;
         if test {
             sleep(1.5).await;

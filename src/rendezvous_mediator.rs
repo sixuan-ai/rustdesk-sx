@@ -311,7 +311,11 @@ impl RendezvousMediator {
                 && !crate::platform::installing_service()
             {
                 let mut futs = Vec::new();
-                let servers = Config::get_rendezvous_servers();
+                let servers = if base::config::is_direct_only() {
+                    Vec::new()
+                } else {
+                    Config::get_rendezvous_servers()
+                };
                 SHOULD_EXIT.store(false, Ordering::SeqCst);
                 MANUAL_RESTARTED.store(false, Ordering::SeqCst);
                 for host in servers.clone() {

@@ -80,6 +80,23 @@ cd rustdesk-sx-2.1.0-linux-x86_64-ubuntu26.04
 
 底部的 **ID 服务器状态**不代表 Tailscale/IP 直连是否可用；等待被控端选择共享屏幕，也不应直接判断为客户端卡死。Tailscale 组网不会替代 RustDesk 认证；Portal 授权与 DRM 系统服务是不同的被控路径。
 
+### 仅直连模式（main 源码）
+
+适用于只通过 Tailscale/IP 或显式 `host:port` 连接、不使用 RustDesk ID／中继服务的场景。**当前下载页的 v2.1.0 包尚未包含此源码更新。**
+
+先退出 RustDesk，备份 `~/.config/rustdesk/RustDesk2.toml`，在已有 `[options]` 内加入（不要重复建立该节，也不要覆盖其他选项）：
+
+```toml
+[options]
+direct-only = 'Y'
+```
+
+随后重启。此模式跳过 ID 注册、NAT／ID 测速及公共 ID 回退；数字设备 ID 无法用于连接，请输入 Tailscale/IP 或 `host:port`。设备卡片显示直连端口是否可达，这不等同于已通过远控认证。
+
+原有账号 API、密码和设备记录仍保留；需要接受直连的设备继续启用原有“IP 直接访问”。账号／组网服务与 RustDesk ID／中继服务是独立职责。修改模式需要重启，不要用“停止服务”代替它。回滚到不支持此选项的旧版本前，应恢复备份的 ID／中继配置。
+
+源码同时包含 Linux 主窗口退出前的后台事件清理，以及验证码逐字输入的焦点修复。一次正常关闭／重启未复现此前崩溃，Flutter 原生退出警告仍存在；详细验证范围见[直连与退出记录](docs/incidents/2026-10-30-local-direct-only-and-shutdown.md)。
+
 ## 验证状态与已知限制
 
 截至 **2026-10-26**：
@@ -102,7 +119,7 @@ git clone --branch main --recurse-submodules https://github.com/sixuan-ai/rustde
 cd rustdesk-sx
 ```
 
-本机已验证工具链为 Ubuntu 26.04.1、Flutter **3.47.7** / Dart **3.13.5**、Rust **1.99.1**。开发方向是当前稳定工具链；这里记录的是验证版本，不代表任意后续 SDK 都已验证。当前桌面 UI 使用 **Flutter**，不使用旧 Sciter 构建步骤。
+2026-10-30 已验证源码构建工具链为 Ubuntu 26.04.1、Flutter **3.47.9** / Dart **3.13.7**、Rust **1.99.1**。开发方向是当前稳定工具链；这里记录的是验证版本，不代表任意后续 SDK 都已验证。当前桌面 UI 使用 **Flutter**，不使用旧 Sciter 构建步骤。
 
 先按 [Linux 构建记录](docs/development-linux-latest-stable-2026-10-23.md)准备 Rust、Flutter Linux 桌面工具链、原生开发依赖及代码生成器。`flutter_rust_bridge_codegen 1.80.1` 用于匹配上游稳定基线的桥接 ABI；首次检出需生成被 Git 忽略的桥接文件。
 

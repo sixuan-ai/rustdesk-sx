@@ -660,6 +660,9 @@ impl Drop for CheckTestNatType {
 }
 
 pub fn test_nat_type() {
+    if base::config::is_direct_only() {
+        return;
+    }
     test_ipv6_sync();
     use std::sync::atomic::{AtomicBool, Ordering};
     std::thread::spawn(move || {
@@ -763,6 +766,9 @@ async fn test_nat_type_() -> ResultType<bool> {
 }
 
 pub async fn get_rendezvous_server(ms_timeout: u64) -> (String, Vec<String>, bool) {
+    if base::config::is_direct_only() {
+        return (String::new(), Vec::new(), false);
+    }
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let (mut a, mut b) = get_rendezvous_server_(ms_timeout);
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -844,10 +850,16 @@ async fn test_rendezvous_server_() {
 }
 
 pub fn test_rendezvous_server() {
+    if base::config::is_direct_only() {
+        return;
+    }
     std::thread::spawn(test_rendezvous_server_);
 }
 
 pub fn refresh_rendezvous_server() {
+    if base::config::is_direct_only() {
+        return;
+    }
     #[cfg(any(target_os = "android", target_os = "ios"))]
     test_rendezvous_server();
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

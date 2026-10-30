@@ -787,5 +787,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Clear search", "清除搜索"),
         ("No matching devices", "没有匹配的设备"),
         ("ID server status does not describe direct IP connections", "此处显示 ID 服务器状态，Tailscale / IP 直连状态以实际连接结果为准。"),
+        ("Direct port reachable", "直连端口可达"),
+        ("Direct availability unconfirmed", "直连状态未确认"),
     ].iter().cloned().collect();
 }

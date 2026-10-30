@@ -14,6 +14,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../common.dart';
+import '../direct_peer_status.dart';
 import '../../desktop/widgets/companion_peer_widgets.dart';
 import '../../desktop/widgets/companion_device_widgets.dart';
 import '../../models/peer_model.dart';
@@ -358,10 +359,17 @@ class _PeersViewState extends State<_PeersView>
           final skipIfMobile =
               (isAndroid || isIOS) && !stateGlobal.isInMainPage;
           final skipIfNotActive = skipIfIsWeb || skipIfMobile || !_isActive;
-          if (!skipIfNotActive && (_queryCount < _maxQueryCount || !p)) {
-            if (now.difference(_lastQueryTime) >= _queryInterval) {
+          final hasDirectPeers = _curPeers.any(isDirectPeerAddress);
+          final interval =
+              hasDirectPeers ? const Duration(seconds: 6) : _queryInterval;
+          if (!skipIfNotActive &&
+              (_queryCount < _maxQueryCount || !p || hasDirectPeers)) {
+            if (now.difference(_lastQueryTime) >= interval) {
               if (_curPeers.isNotEmpty) {
-                bind.queryOnlines(ids: _curPeers.toList(growable: false));
+                final ids = p && _queryCount >= _maxQueryCount
+                    ? _curPeers.where(isDirectPeerAddress)
+                    : _curPeers;
+                bind.queryOnlines(ids: ids.toList(growable: false));
                 _lastQueryTime = DateTime.now();
                 _queryCount += 1;
               }
